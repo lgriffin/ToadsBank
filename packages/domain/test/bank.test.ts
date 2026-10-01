@@ -15,6 +15,8 @@ import {
   deliver,
   expire,
   freshness,
+  isAdmin,
+  isOfficer,
   nameFromLink,
   observedQuantities,
   reject,
@@ -98,10 +100,32 @@ describe('sources', () => {
     expect(canSee({ audience: 'officers', managers: [] }, member)).toBe(false);
     expect(canSee(vault, member)).toBe(true);
     expect(canSee({ audience: 'officers', managers: [] }, officer)).toBe(true);
-    expect(canManage({ managers: [] }, officer)).toBe(false);
-    expect(canManage({ managers: [] }, admin)).toBe(true);
-    expect(canUpload({ managers: [] }, officer)).toBe(true);
-    expect(canUpload({ managers: [] }, member)).toBe(false);
+    const open = { id: 's1', audience: 'members' as const, managers: [] };
+    expect(canManage(open, officer)).toBe(false);
+    expect(canManage(open, admin)).toBe(true);
+    expect(canUpload(open, officer)).toBe(true);
+    expect(canUpload(open, member)).toBe(false);
+  });
+
+  it('lets a hub-vouched uploader and manager act only on the banks the hub named, and see nothing more (TB-BM-17)', () => {
+    const open = { id: 's1', audience: 'members' as const, managers: [] };
+    const other = { id: 's2', audience: 'members' as const, managers: [] };
+    const hidden = { id: 's3', audience: 'officers' as const, managers: [] };
+    const banks = ['s1', 's3'];
+    const uploader = { memberId: '4', name: 'u', roles: ['member', 'uploader'] as const, banks };
+    const manager = { memberId: '5', name: 'm', roles: ['member', 'manager'] as const, banks };
+    expect(canUpload(open, uploader)).toBe(true);
+    expect(canManage(open, uploader)).toBe(false);
+    expect(canManage(open, manager)).toBe(true);
+    expect(canUpload(open, manager)).toBe(false);
+    // A bank the hub did not name on this call, and an officers-only bank even when named, stay out of reach.
+    for (const actor of [uploader, manager]) {
+      expect(canUpload(other, actor) || canManage(other, actor)).toBe(false);
+      expect(canUpload(hidden, actor) || canManage(hidden, actor)).toBe(false);
+      expect(canSee(hidden, actor)).toBe(false);
+      expect(isOfficer(actor) || isAdmin(actor)).toBe(false);
+    }
+    expect(canManage(open, { ...manager, banks: undefined })).toBe(false);
   });
 });
 

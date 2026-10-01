@@ -247,7 +247,8 @@ export class PlanRaid {
   private async allocatable(tx: Tx, actor: Actor, sourceId: string): Promise<void> {
     const source = await tx.sources.get(sourceId);
     if (!source || !canSee(source, actor)) throw new DomainError('not_found', `no bank ${sourceId}`);
-    if (!isOfficer(actor) && !canManage(source, actor))
+    // Only officers and the bank's listed managers commit its stock; a delegated manager (TB-BM-17) runs requests only.
+    if (!isOfficer(actor) && !source.managers.includes(actor.memberId))
       throw new DomainError('forbidden', `only officers and ${source.name}’s managers may commit its stock`);
   }
 

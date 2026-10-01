@@ -72,7 +72,13 @@ export class BankWorld extends World {
     let actor = this.actors.get(name);
     if (!actor) {
       const roles: Role[] =
-        role === 'admin' ? ['member', 'officer', 'admin'] : role === 'officer' ? ['member', 'officer'] : ['member'];
+        role === 'admin'
+          ? ['member', 'officer', 'admin']
+          : role === 'officer'
+            ? ['member', 'officer']
+            : role === 'member'
+              ? ['member']
+              : ['member', role];
       actor = { memberId: String(100 + this.actors.size), name, roles };
       this.actors.set(name, actor);
     }

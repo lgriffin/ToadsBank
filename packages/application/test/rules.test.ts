@@ -79,6 +79,16 @@ describe('TB-GM-04: raid views and plans stay inside the banks a member may see'
     expect(await allocate(open)).toBe('ok');
   });
 
+  it("does not let a raid's manager commit stock as a hub-vouched manager (TB-BM-17)", async () => {
+    const { h, open, night } = await privateRaid();
+    const vouched = { ...rai, roles: ['member', 'manager'] as const, banks: [open] };
+    expect(
+      await outcome(() =>
+        h.bank.raids.allocate(vouched, night.id, { sourceId: open, itemId: POTION, quantity: 1 }, h.key()),
+      ),
+    ).toBe('forbidden');
+  });
+
   it("does not let a raid's manager release an allocation from a bank they cannot see", async () => {
     const { h, hidden, night } = await privateRaid();
     const [allocation] = await h.uow.tx.allocations.find({ sourceId: hidden });
@@ -143,5 +153,28 @@ describe('TB-RL-07: each raid target counts free stock only from the banks its r
     // Kara may only use Alt's 20; Gruul then gets Toads' 50 and nothing left of Alt.
     expect(await target(kara.id)).toMatchObject({ freeAssigned: 20, shortfall: 20 });
     expect(await target(gruul.id)).toMatchObject({ freeAssigned: 50, shortfall: 10 });
+  });
+});
+
+describe('TB-BM-17: a hub-vouched manager works only the banks the hub names, and never an officers-only one', () => {
+  it('lists and approves on named banks only', async () => {
+    const h = harness();
+    const open = await h.seeded('Toads', 40);
+    const other = await h.seeded('Alts', 40);
+    const hidden = await h.seeded('Vault', 100, { audience: 'officers', managers: [olga.memberId] });
+    const ask = (sourceId: string, who = frog) =>
+      h.bank.requests.create(who, { sourceId, itemId: POTION, quantity: 1, character: 'Frog' }, h.key());
+    const onOpen = await ask(open);
+    const onOther = await ask(other);
+    const onHidden = await ask(hidden, olga);
+    const mo = { memberId: '9', name: 'Mo', roles: ['member', 'manager'] as const, banks: [open, hidden] };
+    const ids = async (scope: 'queue' | 'all') => (await h.bank.requests.list(mo, scope)).map((r) => r.id);
+    expect(await ids('queue')).toEqual([onOpen.id]);
+    expect(await ids('all')).toEqual([onOpen.id]);
+    const approve = (id: string, revision: number) =>
+      outcome(() => h.bank.fulfil.approve(mo, id, revision, 'ok', h.key()));
+    expect(await approve(onOther.id, onOther.revision)).toBe('forbidden');
+    expect(await approve(onHidden.id, onHidden.revision)).toBe('forbidden');
+    expect(await approve(onOpen.id, onOpen.revision)).toBe('ok');
   });
 });

@@ -495,3 +495,18 @@ Then('the stock review names no member', async function (this: BankWorld) {
     assert.ok(!text.includes(`"${actor.memberId}"`) && !text.includes(actor.name), `review mentions ${actor.name}`);
   }
 });
+
+When('{word} registers the bank {string}', async function (this: BankWorld, name: string, bank: string) {
+  await this.attempt(() =>
+    this.bank.sources.create(
+      this.actor(name),
+      { name: bank, guild: bank, realm: 'Elsewhere', region: 'EU', audience: 'members', managers: [] },
+      this.key(),
+    ),
+  );
+});
+
+Given('the hub vouches for {word} on {string}', function (this: BankWorld, name: string, bank: string) {
+  const actor = this.actor(name);
+  this.actors.set(name, { ...actor, banks: [...(actor.banks ?? []), this.bankRef(bank).id] });
+});
