@@ -1,8 +1,9 @@
-// Composition root for the toadsbank-worker image: outbox delivery, DM retries and expiry arrive with Slice 1-3.
+// Composition root for the toadsbank-worker image: outbox delivery, DM retries and expiry arrive with the core.
 import { databaseIsReady } from '@toadsbank/adapter-postgres';
 import pg from 'pg';
+import { setting } from '../../api/src/config';
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new pg.Pool({ connectionString: setting('DATABASE_URL'), max: 2 });
 const tick = async () => {
   if (!(await databaseIsReady(pool))) console.warn('toadsbank-worker: database not ready');
 };

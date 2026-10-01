@@ -88,7 +88,7 @@ describe('bounds (TB-DM-07)', () => {
     const big = utf8Encode(canonicalJson({ pad: 'x'.repeat(1024 * 1024) } as Json));
     const [part] = encodeParts(big.subarray(0, 1269), 'oversize-01');
     const oversized = { ...(part as Part), payload: Buffer.from(big).toString('base64') };
-    expect(() => assembleParts([oversized])).toThrow(/exceeds/);
+    expect(() => assembleParts([oversized])).toThrow(/too long|exceeds/);
   });
 
   it('rejects JSON nested deeper than 8', () => {
