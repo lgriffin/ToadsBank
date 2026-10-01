@@ -117,6 +117,11 @@ function main(): void {
   future.completedAt = FIXTURE_NOW + 86_400;
   invalid('future-timestamp', 'schema', 'future_timestamp', reencode(future));
 
+  // 13 supplementary-plane characters: 13 code points but 26 UTF-16 code units, over the 24 an uploader name allows.
+  const wideName = structuredClone(snapshot);
+  wideName.uploader.name = '\u{1F438}'.repeat(13);
+  invalid('utf16-length', 'schema', 'string_length', reencode(wideName));
+
   const badCrc = parts.map((p) => ({ ...p, crc32: p.crc32 === '00000000' ? '00000001' : '00000000' }));
   invalid('bad-crc', 'transport', 'crc_mismatch', badCrc.map(formatPart).join('\n\n'));
 

@@ -56,9 +56,17 @@ local function newFrame(env, kind, name)
   return frame
 end
 
--- bank: { tabs = { {name, viewable, items = { [slot] = {itemId, count, link?} } } }, money }
+-- bank: { tabs = { {name, viewable, items = { [slot] = {itemId, count, link?} } } }, money, lazy }
+-- With lazy = true the fake models the client's cache: a tab's items are visible only once the server's answer
+-- has arrived (FakeWow.deliver), and FakeWow.forget drops them again.
 function FakeWow.new(bank)
-  local env = { frames = {}, queried = {}, bank = bank or { tabs = {} } }
+  local env = { frames = {}, queried = {}, loaded = {}, bank = bank or { tabs = {} } }
+  local function items(tab)
+    if env.bank.lazy and not env.loaded[tab] then
+      return {}
+    end
+    return env.bank.tabs[tab].items
+  end
   env._G = env
   env.CreateFrame = function(kind, name)
     local frame = newFrame(env, kind, name)
@@ -81,14 +89,14 @@ function FakeWow.new(bank)
     env.queried[#env.queried + 1] = tab
   end
   env.GetGuildBankItemInfo = function(tab, slot)
-    local item = env.bank.tabs[tab].items[slot]
+    local item = items(tab)[slot]
     if item then
       return "Interface\\Icons\\INV_Potion_" .. item.itemId, item.count, false
     end
     return nil, 0, false
   end
   env.GetGuildBankItemLink = function(tab, slot)
-    local item = env.bank.tabs[tab].items[slot]
+    local item = items(tab)[slot]
     if not item then
       return nil
     end
@@ -113,6 +121,17 @@ function FakeWow.new(bank)
     return 3
   end
   return setmetatable(env, { __index = _G })
+end
+
+-- The server's answer for a tab arrives: its items become visible and GUILDBANKBAGSLOTS_CHANGED fires.
+function FakeWow.deliver(env, tab)
+  env.loaded[tab] = true
+  FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+end
+
+-- The client drops its copy of a tab.
+function FakeWow.forget(env, tab)
+  env.loaded[tab] = nil
 end
 
 -- Runs every frame's OnUpdate, as one rendered frame would.

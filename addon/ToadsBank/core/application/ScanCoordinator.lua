@@ -6,8 +6,12 @@
 --     have been quiet for settleDelay seconds (TB-BM-01).
 --   * Each query has a timeout and a bounded number of attempts; a tab that never answers, cannot be read or is not
 --     viewable is unknown, never empty (TB-BM-02).
+--   * A signal the BankPort marks ambiguous (the tab's data did not visibly change, so it may be a late signal
+--     from an earlier query) is not trusted: after a quiet settleDelay the tab is queried once more, and only a
+--     signal following that confirming query counts (TB-BM-01).
 --   * A change signal for a tab already read invalidates that read: the tab is queued again, at most
---     maxChangeRetries times, then marked unstable and the snapshot stable=false (TB-BM-03).
+--     maxChangeRetries times, then marked unstable and the snapshot stable=false (TB-BM-03). An 'uncertain'
+--     event (the BankPort can no longer verify a tab it read) also makes the snapshot stable=false.
 --   * The bank closing aborts the scan; nothing is saved, so the last complete snapshot is untouched (TB-BM-04).
 --   * Without guild bank capability the scan refuses to start and touches nothing (TB-DM-04).
 --   * Tab count and capacity come from the BankPort; nothing is hardcoded.
@@ -207,12 +211,19 @@ function ScanCoordinator:onBankEvent(scan, event)
     self:abort("bank_closed")
     return
   end
+  if event.type == "uncertain" then
+    local result = event.tab and scan.results[event.tab]
+    if result and result.status == ns.Tab.OBSERVED then
+      scan.uncertain = true
+    end
+    return
+  end
   if event.type ~= "changed" then
     return
   end
   local attempt = scan.current
   if attempt and (event.tab == nil or event.tab == attempt.index) then
-    self:onSignal(scan, attempt)
+    self:onSignal(scan, attempt, event.ambiguous == true)
   elseif event.tab ~= nil then
     local result = scan.results[event.tab]
     if result and result.status == ns.Tab.OBSERVED then
@@ -221,10 +232,26 @@ function ScanCoordinator:onBankEvent(scan, event)
   end
 end
 
--- An update signal for the tab in flight.
-function ScanCoordinator:onSignal(scan, attempt)
-  if attempt.phase == "awaiting" then
+-- An update signal for the tab in flight. An ambiguous one before the confirming query only starts that query.
+function ScanCoordinator:onSignal(scan, attempt, ambiguous)
+  if (attempt.phase == "awaiting" or attempt.phase == "confirming") and ambiguous and not attempt.confirmed then
+    if attempt.phase == "confirming" then
+      attempt.settleResets = attempt.settleResets + 1
+      if attempt.settleResets > self.options.maxSettleResets then
+        self:invalidate(scan, attempt.index)
+        return
+      end
+    end
+    attempt.phase = "confirming"
+    self:arm(scan, attempt, self.options.settleDelay, function()
+      attempt.confirmed = true
+      self:query(scan, attempt)
+    end)
+    return
+  end
+  if attempt.phase == "awaiting" or attempt.phase == "confirming" then
     attempt.phase = "settling"
+    attempt.settleResets = 0
   elseif attempt.phase == "settling" then
     attempt.settleResets = attempt.settleResets + 1
     if attempt.settleResets > self.options.maxSettleResets then
@@ -324,7 +351,7 @@ function ScanCoordinator:finish(scan)
   local now = self:now()
   local identity = scan.identity
   local profile = self.capabilities:getProfile() or {}
-  local tabs, stable = {}, true
+  local tabs, stable = {}, not scan.uncertain
   for i = 1, #scan.order do
     local tab = scan.results[scan.order[i]]
     tabs[#tabs + 1] = tab

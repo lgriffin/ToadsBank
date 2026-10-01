@@ -18,7 +18,9 @@ Ports.BankPort = {
     getCapacity = "(index) -> integer slots in the tab. Never hardcoded in the core",
     getMoney = "() -> copper | nil. Optional",
     subscribeToUpdates = "(listener) -> unsubscribe(). listener(event) with event.type 'changed' (event.tab = the"
-      .. " tab the signal is for, or nil when the client cannot tell), 'opened' or 'closed'",
+      .. " tab the signal is for, or nil when the client cannot tell; event.ambiguous = true when the tab's data did"
+      .. " not visibly change, so the signal may belong to an earlier query), 'uncertain' (event.tab = a tab read"
+      .. " earlier whose data can no longer be verified), 'opened' or 'closed'",
   },
 }
 

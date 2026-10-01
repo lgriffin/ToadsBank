@@ -1,9 +1,16 @@
 -- BankPort in WoW, on the classic guild bank API (TBC Anniversary; assumed for Forever until the Slice 0 probe
 -- confirms it, docs/adr/0004-client-targets.md).
 --
--- GUILDBANKBAGSLOTS_CHANGED carries no tab, so the adapter tags each one with the tab it last queried: the core
--- then treats it as that tab's update signal (TB-BM-01). Bank open/close comes from GUILDBANKFRAME_OPENED/CLOSED
--- and, on clients that have it, PLAYER_INTERACTION_MANAGER_FRAME_SHOW/HIDE for the guild banker.
+-- GUILDBANKBAGSLOTS_CHANGED carries no tab, so the adapter works out what each one means from the data itself:
+--   * Every tab read successfully has a cached signature (slot, item ID, count). On each event the cached tabs
+--     other than the one in flight are re-checked: a different signature is a 'changed' event for that tab, so the
+--     core re-reads it (TB-BM-03); a tab whose items have all vanished cannot be verified and is 'uncertain', which
+--     makes the snapshot stable=false.
+--   * For the tab in flight the event is its update signal (TB-BM-01). When that tab's data is identical to what it
+--     was when queried, the signal is marked ambiguous: it may be a late event from an earlier query, so the core
+--     confirms with another query before trusting it.
+-- Bank open/close comes from GUILDBANKFRAME_OPENED/CLOSED and, on clients that have it,
+-- PLAYER_INTERACTION_MANAGER_FRAME_SHOW/HIDE for the guild banker.
 local _, ns = ...
 
 local GuildBankAdapter = {}
@@ -24,7 +31,9 @@ function GuildBankAdapter.new(capabilities)
   self.capabilities = capabilities
   self.listeners = {}
   self.open = false
-  self.lastQueried = nil
+  self.inFlight = nil -- the tab last queried
+  self.preQuery = nil -- its signature when it was queried
+  self.signatures = {} -- tab -> signature of its last successful read
   self.frame = CreateFrame("Frame")
   local events = { "GUILDBANKFRAME_OPENED", "GUILDBANKFRAME_CLOSED", "GUILDBANKBAGSLOTS_CHANGED" }
   if guildBankerType() then
@@ -52,7 +61,46 @@ function GuildBankAdapter:onEvent(event, ...)
       self:setOpen(event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
     end
   elseif event == "GUILDBANKBAGSLOTS_CHANGED" then
-    self:emit({ type = "changed", tab = self.lastQueried })
+    self:onSlotsChanged()
+  end
+end
+
+-- "slot:itemId:count;" for every occupied slot, "?" for an item whose link has not arrived. "" for an empty tab.
+function GuildBankAdapter:signature(index)
+  local parts = {}
+  for slot = 1, self:getCapacity(index) do
+    local texture, count = GetGuildBankItemInfo(index, slot)
+    if texture then
+      local itemId = ns.Slot.itemIdFromLink(GetGuildBankItemLink(index, slot))
+      parts[#parts + 1] = slot .. ":" .. tostring(itemId or "?") .. ":" .. tostring(count or 1) .. ";"
+    end
+  end
+  return table.concat(parts)
+end
+
+function GuildBankAdapter:onSlotsChanged()
+  local tabs = {}
+  for index in pairs(self.signatures) do
+    if index ~= self.inFlight then
+      tabs[#tabs + 1] = index
+    end
+  end
+  table.sort(tabs)
+  for _, index in ipairs(tabs) do
+    local current = self:signature(index)
+    local cached = self.signatures[index]
+    if current ~= cached then
+      if current == "" then
+        self:emit({ type = "uncertain", tab = index })
+      else
+        self:emit({ type = "changed", tab = index })
+      end
+    end
+  end
+  if self.inFlight then
+    self:emit({ type = "changed", tab = self.inFlight, ambiguous = self:signature(self.inFlight) == self.preQuery })
+  else
+    self:emit({ type = "changed" })
   end
 end
 
@@ -62,7 +110,7 @@ function GuildBankAdapter:setOpen(open)
     self:emit({ type = "opened" })
   else
     -- Also when the window was open before a /reload and no OPENED event was seen.
-    self.lastQueried = nil
+    self.inFlight, self.preQuery = nil, nil
     self:emit({ type = "closed" })
   end
 end
@@ -144,15 +192,17 @@ function GuildBankAdapter:queryTab(index)
   if not self:isOpen() then
     return false, "bank_closed"
   end
-  self.lastQueried = index
+  self.inFlight = index
+  self.preQuery = self:signature(index)
   QueryGuildBankTab(index)
   return true
 end
 
 -- One synchronous pass over the tab: for each occupied slot, its item ID, link and count together. A slot with an
--- item but no link yet means the client has not got the data: the read fails and the core retries it.
+-- item but no link yet means the client has not got the data: the read fails and the core retries it. A good read
+-- becomes the tab's cached signature.
 function GuildBankAdapter:readTabSlots(index)
-  local slots = {}
+  local slots, parts = {}, {}
   for slot = 1, self:getCapacity(index) do
     local texture, count = GetGuildBankItemInfo(index, slot)
     if texture then
@@ -165,8 +215,10 @@ function GuildBankAdapter:readTabSlots(index)
         return nil, "unreadable_link"
       end
       slots[#slots + 1] = ns.Slot.new(slot, itemId, count or 1, link)
+      parts[#parts + 1] = slot .. ":" .. itemId .. ":" .. tostring(count or 1) .. ";"
     end
   end
+  self.signatures[index] = table.concat(parts)
   return slots
 end
 

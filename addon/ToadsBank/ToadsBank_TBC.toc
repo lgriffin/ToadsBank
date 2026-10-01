@@ -9,6 +9,7 @@
 # Interface is stamped from ../clients.lua by ../pack.sh; spec/toc_spec.lua checks the two agree.
 # The core (core/) touches no WoW global; only adapters/ and Bootstrap.lua do.
 core/ports.lua
+core/domain/Utf8.lua
 core/domain/Slot.lua
 core/domain/Tab.lua
 core/domain/Snapshot.lua

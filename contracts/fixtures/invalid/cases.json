@@ -12,6 +12,11 @@
       "code": "future_timestamp"
     },
     {
+      "file": "utf16-length.txt",
+      "stage": "schema",
+      "code": "string_length"
+    },
+    {
       "file": "bad-crc.txt",
       "stage": "transport",
       "code": "crc_mismatch"

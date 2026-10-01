@@ -1,7 +1,8 @@
 -- The rules of contracts/schema/snapshot.v1.json plus the cross-field rules its description lists (unique tab
 -- indices and slot numbers, slot <= capacity, completedAt >= capturedAt, no future timestamps), mirroring the
--- service's validator so the addon never exports what the service would reject. Accepts plain tables or tables
--- marked as JSON arrays.
+-- service's validator so the addon never exports what the service would reject. Strings must be well-formed UTF-8
+-- and their lengths are UTF-16 code units, as the service's fatal decoder and JavaScript's .length see them.
+-- Accepts plain tables or tables marked as JSON arrays.
 local _, ns = ...
 
 local Validator = {}
@@ -81,6 +82,10 @@ end
 
 function Checker:string(value, path, min, max, pattern)
   local ok = type(value) == "string"
+  if ok and not ns.Utf8.isValid(value) then
+    self:fail(path, "is not valid UTF-8")
+    return false
+  end
   if ok then
     local length = ns.Snapshot.length(value)
     ok = length >= min and length <= max and (pattern == nil or value:match(pattern) ~= nil)

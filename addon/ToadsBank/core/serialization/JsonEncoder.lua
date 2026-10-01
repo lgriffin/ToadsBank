@@ -1,5 +1,6 @@
 -- Canonical JSON (contracts/transport.md, Payload step 1): object keys sorted by byte, no whitespace, integers only,
--- strings escaped as JSON.stringify does, everything else as raw bytes. The same value always gives the same bytes.
+-- strings escaped as JSON.stringify does, everything else as raw bytes. Malformed UTF-8 is refused, since the
+-- service decodes the payload with a fatal UTF-8 decoder. The same value always gives the same bytes.
 --
 -- Lua tables have no array/object distinction, so arrays are tables marked with JsonEncoder.array(t); every other
 -- table is an object whose keys must all be strings. An empty marked table encodes as [], an unmarked one as {}.
@@ -35,7 +36,11 @@ local function escapeChar(c)
   return ESCAPES[c] or format("\\u%04x", byte(c))
 end
 
-local function encodeString(s)
+local function encodeString(s, path)
+  local valid, at = ns.Utf8.isValid(s)
+  if not valid then
+    error("JsonEncoder: " .. (path or "$") .. " is not valid UTF-8 (byte " .. at .. ")", 0)
+  end
   return '"' .. s:gsub('[%z\1-\31"\\]', escapeChar) .. '"'
 end
 
@@ -109,7 +114,7 @@ local function encodeObject(t, path, out, depth)
     if i > 1 then
       out[#out + 1] = ","
     end
-    out[#out + 1] = encodeString(k)
+    out[#out + 1] = encodeString(k, path)
     out[#out + 1] = ":"
     encodeValue(t[k], path .. "." .. k, out, depth + 1)
   end
@@ -121,7 +126,7 @@ local MAX_DEPTH = 32
 function encodeValue(v, path, out, depth)
   local kind = type(v)
   if kind == "string" then
-    out[#out + 1] = encodeString(v)
+    out[#out + 1] = encodeString(v, path)
   elseif kind == "number" then
     out[#out + 1] = encodeNumber(v, path)
   elseif kind == "boolean" then

@@ -32,6 +32,7 @@
       "features/bank-manager.feature:24"
     ],
     "tests": [
+      "addon/spec/guild_bank_adapter_spec.lua",
       "addon/spec/scan_coordinator_spec.lua"
     ],
     "linked": true
@@ -186,6 +187,7 @@
       "addon/spec/json_encoder_spec.lua",
       "addon/spec/scan_coordinator_spec.lua",
       "addon/spec/snapshot_spec.lua",
+      "addon/spec/utf8_spec.lua",
       "tests/trace.test.ts"
     ],
     "linked": true
@@ -197,6 +199,7 @@
     ],
     "tests": [
       "addon/spec/contract_spec.lua",
+      "addon/spec/utf8_spec.lua",
       "addon/spec/validator_spec.lua",
       "tests/contract/snapshot-contract.test.ts"
     ],

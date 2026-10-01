@@ -1,5 +1,6 @@
 -- A toadsbank.snapshot v1 (contracts/schema/snapshot.v1.json) as a plain Lua table. Lists are plain sequences here;
--- the export marks them as JSON arrays. Strings are cut to the schema's limits on UTF-8 boundaries.
+-- the export marks them as JSON arrays. Strings are made well-formed UTF-8 and cut to the schema's limits in UTF-16
+-- code units, as the service counts them.
 local _, ns = ...
 
 local Snapshot = {}
@@ -9,36 +10,20 @@ Snapshot.SCHEMA_VERSION = 1
 Snapshot.ID_PATTERN = "^[A-Za-z0-9%-]+$"
 Snapshot.ID_MIN, Snapshot.ID_MAX = 8, 48
 
-local floor, byte, format = math.floor, string.byte, string.format
+local floor, format = math.floor, string.format
 
--- Number of UTF-8 characters (bytes that are not continuation bytes).
+-- Length as the service measures it: UTF-16 code units (a supplementary-plane character counts 2).
 function Snapshot.length(s)
-  local n = 0
-  for i = 1, #s do
-    local b = byte(s, i)
-    if b < 128 or b >= 192 then
-      n = n + 1
-    end
-  end
-  return n
+  return ns.Utf8.units(s)
 end
 
--- s cut to at most maxChars UTF-8 characters, never inside a character.
-function Snapshot.truncate(s, maxChars)
+-- s made well-formed (malformed bytes become U+FFFD) and cut to at most maxUnits UTF-16 code units, never inside
+-- a UTF-8 sequence or a surrogate pair.
+function Snapshot.truncate(s, maxUnits)
   if type(s) ~= "string" then
     return ""
   end
-  local n = 0
-  for i = 1, #s do
-    local b = byte(s, i)
-    if b < 128 or b >= 192 then
-      n = n + 1
-      if n > maxChars then
-        return s:sub(1, i - 1)
-      end
-    end
-  end
-  return s
+  return ns.Utf8.truncate(s, maxUnits)
 end
 
 local function idPart(s)

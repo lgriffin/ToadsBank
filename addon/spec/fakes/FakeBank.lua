@@ -5,6 +5,7 @@
 --     silent = 0,           -- the first `silent` queries never signal (timeouts)
 --     queryErrors = 0,      -- the first `queryErrors` queries return false, "query_failed"
 --     readErrors = 0,       -- the first `readErrors` reads return nil, "link_pending"
+--     ambiguous = 0,        -- the first `ambiguous` signals are flagged ambiguous (data did not visibly change)
 --     onQuery = function(bank, attempt) end,  -- hook for mid-scan changes
 --   }
 -- Every call is logged in bank.calls ("query:1", "read:1", ...) so specs can assert ordering.
@@ -25,7 +26,7 @@ function FakeBank.new(clock, config)
     }
   self.listeners = {}
   self.calls = {}
-  self.queries, self.reads = {}, {}
+  self.queries, self.reads, self.signals = {}, {}, {}
   return self
 end
 
@@ -102,7 +103,8 @@ function FakeBank:queryTab(index)
   for echo = 1, (tab.echoes or 1) do
     self.clock:schedule(delay + (echo - 1) * 0.1, function()
       if self.open then
-        self:emit({ type = "changed", tab = index })
+        self.signals[index] = (self.signals[index] or 0) + 1
+        self:emit({ type = "changed", tab = index, ambiguous = self.signals[index] <= (tab.ambiguous or 0) })
       end
     end)
   end

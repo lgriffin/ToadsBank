@@ -47,7 +47,9 @@ own repository. Then use it to replace the placeholders it answers: the Forever 
 - That `QueryGuildBankTab(tab)` is answered by `GUILDBANKBAGSLOTS_CHANGED` (with no tab argument), how many times it
   fires per query, and whether it fires for tabs the player cannot view.
 - That `GetGuildBankItemInfo` / `GetGuildBankItemLink` return data for a queried tab that is not the current UI tab,
-  and keep it after another tab is queried.
+  and keep it after another tab is queried. GuildBankAdapter re-checks the tabs it has read on every
+  `GUILDBANKBAGSLOTS_CHANGED` to catch changes during a scan (TB-BM-03); if the client drops that data, every scan
+  will come out `stable: false`, and the run's `rereadAtEnd` shows it.
 - That links are available in the same frame as the slot's texture and count (the addon retries when not).
 - `MAX_GUILDBANK_SLOTS_PER_TAB` (98 assumed when absent) and the open/close events (`GUILDBANKFRAME_OPENED/CLOSED`
   or `PLAYER_INTERACTION_MANAGER_FRAME_SHOW/HIDE`).

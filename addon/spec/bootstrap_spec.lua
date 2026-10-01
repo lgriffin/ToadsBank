@@ -20,7 +20,8 @@ describe("Bootstrap in a fake client", function()
     for slot = 1, 98 do
       items[slot] = { itemId = 22000 + slot, count = slot % 20 + 1 }
     end
-    env = FakeWow.new({ money = 5, tabs = { { name = "Full", items = items }, { name = "Mats", items = {} } } })
+    local tabs = { { name = "Full", items = items }, { name = "Mats", items = {} } }
+    env = FakeWow.new({ lazy = true, money = 5, tabs = tabs })
     messages = {}
     now = 1000
     env.GetTime = function() return now end
@@ -62,10 +63,13 @@ describe("Bootstrap in a fake client", function()
     env.SlashCmdList.TOADSBANK("scan")
     assert.are.same({ 1 }, env.queried)
     advance(1)
-    FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+    FakeWow.deliver(env, 1)
     advance(1)
     assert.are.same({ 1, 2 }, env.queried)
-    FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+    FakeWow.deliver(env, 2) -- an empty tab looks the same before and after: ambiguous, so it is queried again
+    advance(0.5)
+    assert.are.same({ 1, 2, 2 }, env.queried)
+    FakeWow.deliver(env, 2)
     advance(1)
     assert.matches("scan complete", lastMessage())
     local snap = env.ToadsBankDB.lastSnapshot

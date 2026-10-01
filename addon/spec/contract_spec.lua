@@ -55,12 +55,17 @@ describe("contract fixtures (TB-DM-03)", function()
     assert.is_true(ok, issues and ns.Validator.describe(issues))
   end)
 
-  local SCHEMA_MESSAGES = { duplicate_slot = "duplicates slot", future_timestamp = "is in the future" }
+  local SCHEMA_MESSAGES = {
+    duplicate_slot = "duplicates slot",
+    future_timestamp = "is in the future",
+    string_length = "must be a string of 1 to 24 characters", -- UTF-16 code units, as JavaScript counts them
+  }
 
   it("the Validator rejects each schema-stage invalid fixture with the service's reason", function()
-    local checked = 0
+    local checked, expected = 0, 0
     for _, case in ipairs(cases.cases) do
       if case.stage == "schema" then
+        expected = expected + 1
         local parts = Fixtures.parseParts(Fixtures.read("invalid/" .. case.file))
         local chunks = {}
         for _, part in ipairs(parts) do
@@ -75,6 +80,7 @@ describe("contract fixtures (TB-DM-03)", function()
         checked = checked + 1
       end
     end
-    assert.are.equal(2, checked)
+    assert.are.equal(expected, checked)
+    assert.truthy(checked >= 3)
   end)
 end)

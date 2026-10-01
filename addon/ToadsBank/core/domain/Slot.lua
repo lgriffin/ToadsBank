@@ -22,10 +22,11 @@ function Slot.itemIdFromLink(link)
   return tonumber(link:match("item:(%d+)"))
 end
 
--- Builds a slot record; link is optional and dropped when longer than the contract allows.
+-- Builds a slot record; link is optional and dropped when it is longer than the contract allows or not well-formed
+-- UTF-8 (the item ID, slot and count carry the record; the link is only a hint).
 function Slot.new(slot, itemId, count, link)
   local record = { slot = slot, itemId = itemId, count = count }
-  if type(link) == "string" and #link >= 1 and #link <= Slot.MAX_LINK then
+  if type(link) == "string" and #link >= 1 and ns.Utf8.units(link) <= Slot.MAX_LINK and ns.Utf8.isValid(link) then
     record.link = link
   end
   return record

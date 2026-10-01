@@ -1,6 +1,7 @@
 -- GuildBankAdapter (BankPort in WoW) on a fake classic guild bank API, and a whole scan through it: queries one tab
--- at a time and reads after GUILDBANKBAGSLOTS_CHANGED (TB-BM-01), unviewable tabs unknown (TB-BM-02), the window
--- closing aborts (TB-BM-04).
+-- at a time and reads after GUILDBANKBAGSLOTS_CHANGED (TB-BM-01), a late event from an earlier query is not taken
+-- for the next tab's answer, a change to a tab already read is caught (TB-BM-03), unviewable tabs are unknown
+-- (TB-BM-02), the window closing aborts (TB-BM-04).
 local Loader = require("spec.helpers.loader")
 local FakeWow = require("spec.helpers.fake_wow")
 local ManualClock = require("spec.fakes.ManualClock")
@@ -108,18 +109,27 @@ describe("GuildBankAdapter", function()
       local capabilities = ns.ClientCapabilities.new()
       scanner = ns.ScanCoordinator.new({ bank = bank, clock = clock, capabilities = capabilities, store = store,
         addonVersion = "1.0.0", random = function() return 1 end })
+      env.bank.lazy = true
       FakeWow.fire(env, "GUILDBANKFRAME_OPENED")
     end)
+
+    -- Starts a scan and answers tab 1, leaving tab 3 in flight with no answer yet.
+    local function readFirstTab()
+      assert.is_true((scanner:start()))
+      FakeWow.deliver(env, 1)
+      clock:advance(1)
+      assert.are.same({ 1, 3 }, env.queried)
+    end
 
     it("TB-BM-01 TB-BM-02 queries viewable tabs one at a time and reads each after its signal", function()
       assert.is_true((scanner:start()))
       assert.are.same({ 1 }, env.queried)
       clock:advance(1)
       assert.are.same({ 1 }, env.queried, "waits for the signal")
-      FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+      FakeWow.deliver(env, 1)
       clock:advance(1)
       assert.are.same({ 1, 3 }, env.queried)
-      FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+      FakeWow.deliver(env, 3)
       clock:advance(1)
       local snap = store.last
       assert.are.equal("observed", snap.tabs[1].status)
@@ -130,6 +140,51 @@ describe("GuildBankAdapter", function()
       assert.are.same({ flavour = "tbc", build = "2.5.5.65000", interface = 20505 }, snap.client)
       assert.are.equal("spineshatter-bankalt-1790799000-0001", snap.snapshotId)
       assert.is_true((ns.Validator.validate(snap, clock:now())))
+    end)
+
+    it("TB-BM-01 does not take a late event from the previous query as the next tab's answer", function()
+      readFirstTab()
+      FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED") -- a late echo of tab 1's query; tab 3 has no data yet
+      clock:advance(1)
+      assert.is_nil(store.last, "tab 3 must not be read before its data arrives")
+      assert.are.same({ 1, 3, 3 }, env.queried, "the ambiguous signal is confirmed with another query")
+      FakeWow.deliver(env, 3)
+      clock:advance(1)
+      assert.are.equal("observed", store.last.tabs[3].status)
+      assert.are.same({ { slot = 4, itemId = 21886, count = 10, link = store.last.tabs[3].slots[1].link } },
+        store.last.tabs[3].slots)
+      assert.is_true(store.last.stable)
+    end)
+
+    it("TB-BM-03 re-reads a tab already read when its contents change during the scan", function()
+      local events = {}
+      bank:subscribeToUpdates(function(e)
+        events[#events + 1] = e.type .. ":" .. tostring(e.tab)
+      end)
+      readFirstTab()
+      env.bank.tabs[1].items[1].count = 9 -- someone withdraws from tab 1 while tab 3 is in flight
+      FakeWow.fire(env, "GUILDBANKBAGSLOTS_CHANGED")
+      assert.are.equal("changed:1", events[#events - 1])
+      FakeWow.deliver(env, 3)
+      clock:advance(1)
+      FakeWow.deliver(env, 1)
+      clock:advance(1)
+      FakeWow.deliver(env, 1)
+      clock:advance(1)
+      local snap = store.last
+      assert.is_not_nil(snap)
+      assert.are.equal(9, snap.tabs[1].slots[1].count)
+      assert.are.equal("observed", snap.tabs[1].status)
+      assert.is_true(snap.stable)
+    end)
+
+    it("TB-BM-03 marks the snapshot stable=false when a tab already read can no longer be verified", function()
+      readFirstTab()
+      FakeWow.forget(env, 1)
+      FakeWow.deliver(env, 3)
+      clock:advance(1)
+      assert.are.equal("observed", store.last.tabs[1].status)
+      assert.is_false(store.last.stable)
     end)
 
     it("TB-BM-04 aborts when the guild bank window closes", function()
