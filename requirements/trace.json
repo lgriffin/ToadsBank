@@ -14,13 +14,15 @@
   "TB-BM-02": {
     "statement": "If a tab is inaccessible or times out, then the addon shall mark it unknown and shall not export it as empty.",
     "scenarios": [
-      "features/bank-manager.feature:16"
+      "features/bank-manager.feature:16",
+      "features/service/imports.feature:46"
     ],
     "tests": [
       "addon/spec/export_snapshot_spec.lua",
       "addon/spec/guild_bank_adapter_spec.lua",
       "addon/spec/scan_coordinator_spec.lua",
-      "addon/spec/validator_spec.lua"
+      "addon/spec/validator_spec.lua",
+      "packages/domain/test/bank.test.ts"
     ],
     "linked": true
   },
@@ -63,57 +65,66 @@
   "TB-BM-06": {
     "statement": "When all parts arrive, the service shall reassemble in any order, verify the CRC32, validate the schema and show a preview.",
     "scenarios": [
-      "features/bank-manager.feature:48"
+      "features/service/imports.feature:10",
+      "features/service/imports.feature:17"
     ],
     "tests": [
       "tests/contract/snapshot-contract.test.ts"
     ],
-    "linked": false
+    "linked": true
   },
   "TB-BM-07": {
     "statement": "If a snapshot ID is imported again, then the service shall return the earlier receipt for identical content and reject different content.",
     "scenarios": [
-      "features/bank-manager.feature:51"
+      "features/service/imports.feature:24",
+      "features/service/imports.feature:32"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-BM-08": {
     "statement": "If a snapshot is older than a tab's baseline, then the service shall keep it as history and leave the baseline unchanged.",
     "scenarios": [
-      "features/bank-manager.feature:54"
+      "features/service/imports.feature:39"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-BM-09": {
     "statement": "When a partial snapshot is accepted, the service shall update only observed tabs and retain the others at their previous age.",
     "scenarios": [
-      "features/bank-manager.feature:57"
+      "features/service/imports.feature:46"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-BM-10": {
     "statement": "The service shall resolve exports of one physical bank by different uploaders to one source.",
     "scenarios": [
-      "features/bank-manager.feature:60"
+      "features/service/imports.feature:55",
+      "features/service/imports.feature:63"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-BM-11": {
     "statement": "When a request is assigned, the service shall notify the manager by DM and list it in the website queue.",
     "scenarios": [
-      "features/bank-manager.feature:63"
+      "features/service/requests.feature:8"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-BM-12": {
     "statement": "If a manager DM fails, then the service shall keep the assignment, retry within limits and notify the fallback channel.",
     "scenarios": [
-      "features/bank-manager.feature:66"
+      "features/bank-manager.feature:48"
     ],
     "tests": [],
     "linked": false
@@ -121,49 +132,52 @@
   "TB-BM-13": {
     "statement": "When a delivery is recorded, the service shall reduce the reservation and allocation and create the pending outgoing in one transaction.",
     "scenarios": [
-      "features/bank-manager.feature:69"
+      "features/service/fulfilment.feature:9",
+      "features/service/fulfilment.feature:16"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-BM-14": {
     "statement": "While a pending outgoing has no later observation covering it, the service shall keep that quantity unavailable.",
     "scenarios": [
-      "features/bank-manager.feature:72"
+      "features/service/fulfilment.feature:21"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-BM-15": {
     "statement": "The service shall label a matching quantity change as consistent with reported movement and shall not infer who was fulfilled.",
     "scenarios": [
-      "features/bank-manager.feature:75"
+      "features/service/fulfilment.feature:30",
+      "features/service/fulfilment.feature:38"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-BM-16": {
     "statement": "If a Discord action carries a stale revision, then the service shall reject it and show current state.",
     "scenarios": [
-      "features/bank-manager.feature:78"
+      "features/service/fulfilment.feature:44"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-DM-01": {
     "statement": "The domain and application modules shall import no adapter, framework, SQL client, Discord library or Blizzard global.",
     "scenarios": [
-      "features/developer.feature:7"
+      "features/service/engineering.feature:5"
     ],
     "tests": [
-      "tests/architecture.test.ts"
+      "tests/architecture.test.ts",
+      "tests/trace.test.ts"
     ],
-    "linked": false
+    "linked": true
   },
   "TB-DM-02": {
     "statement": "The addon's domain and serialization modules shall run under standalone Lua with no WoW client.",
     "scenarios": [
-      "features/developer.feature:10"
+      "features/developer.feature:7"
     ],
     "tests": [
       "addon/spec/base64_spec.lua",
@@ -171,14 +185,15 @@
       "addon/spec/crc32_spec.lua",
       "addon/spec/json_encoder_spec.lua",
       "addon/spec/scan_coordinator_spec.lua",
-      "addon/spec/snapshot_spec.lua"
+      "addon/spec/snapshot_spec.lua",
+      "tests/trace.test.ts"
     ],
     "linked": true
   },
   "TB-DM-03": {
     "statement": "The Lua and TypeScript codebases shall validate against the same checked-in contract fixtures.",
     "scenarios": [
-      "features/developer.feature:17"
+      "features/developer.feature:14"
     ],
     "tests": [
       "addon/spec/contract_spec.lua",
@@ -190,7 +205,7 @@
   "TB-DM-04": {
     "statement": "Where the client lacks guild-bank capability, the addon shall report the source as unsupported and shall not scan.",
     "scenarios": [
-      "features/developer.feature:24"
+      "features/developer.feature:21"
     ],
     "tests": [
       "addon/spec/client_capabilities_spec.lua",
@@ -201,7 +216,7 @@
   "TB-DM-05": {
     "statement": "The stack shall start from a clean clone with one compose command.",
     "scenarios": [
-      "features/developer.feature:31"
+      "features/developer.feature:28"
     ],
     "tests": [],
     "linked": false
@@ -209,25 +224,28 @@
   "TB-DM-06": {
     "statement": "Every mutating use case shall accept an idempotency key and, where an entity exists, its expected revision.",
     "scenarios": [
-      "features/developer.feature:34"
+      "features/service/requests.feature:46",
+      "features/service/requests.feature:52"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "tests/integration/concurrency.test.ts"
+    ],
+    "linked": true
   },
   "TB-DM-07": {
     "statement": "The service shall reject imports above 1 MiB decoded, 800 parts or a 30-minute session, and bound depth, integers and indices.",
     "scenarios": [
-      "features/developer.feature:37"
+      "features/service/imports.feature:69"
     ],
     "tests": [
       "tests/contract/snapshot-contract.test.ts"
     ],
-    "linked": false
+    "linked": true
   },
   "TB-DM-08": {
     "statement": "The service shall escape imported names and suppress mentions in all bot output.",
     "scenarios": [
-      "features/developer.feature:40"
+      "features/developer.feature:31"
     ],
     "tests": [],
     "linked": false
@@ -235,23 +253,25 @@
   "TB-DM-09": {
     "statement": "When a snapshot is accepted, the service shall publish one outbox event; website and Discord updates shall retry without re-importing.",
     "scenarios": [
-      "features/developer.feature:43"
+      "features/service/imports.feature:77"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-DM-10": {
     "statement": "If a pull request adds a capability with no EARS statement and linked scenario, then CI shall fail.",
     "scenarios": [
-      "features/developer.feature:46"
+      "features/service/engineering.feature:14"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "tests/trace.test.ts"
+    ],
+    "linked": true
   },
   "TB-DM-11": {
     "statement": "When a release tag is cut, the pipeline shall publish versioned images and the addon archive from that one tag.",
     "scenarios": [
-      "features/developer.feature:49"
+      "features/developer.feature:34"
     ],
     "tests": [],
     "linked": false
@@ -259,137 +279,155 @@
   "TB-GM-01": {
     "statement": "The service shall show each permitted physical bank as its tabs and slots, in captured slot order.",
     "scenarios": [
-      "features/guild-member.feature:7"
+      "features/service/inventory.feature:3"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "tests/trace.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-02": {
     "statement": "The service shall show observed, pending outgoing, raid held, direct reserved and general available quantities for every item.",
     "scenarios": [
-      "features/guild-member.feature:10"
+      "features/service/inventory.feature:12"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts",
+      "tests/trace.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-03": {
     "statement": "The service shall show the observation age of every source and the capture-time range of every aggregate.",
     "scenarios": [
-      "features/guild-member.feature:13"
+      "features/service/inventory.feature:25"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-GM-04": {
     "statement": "The service shall exclude sources a member may not see from every aggregate shown to that member.",
     "scenarios": [
-      "features/guild-member.feature:16"
+      "features/service/inventory.feature:36"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-05": {
     "statement": "When a member submits a request, the service shall reserve the quantity atomically or reject the request.",
     "scenarios": [
-      "features/guild-member.feature:19"
+      "features/service/requests.feature:8",
+      "features/service/requests.feature:16"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "tests/integration/concurrency.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-06": {
     "statement": "If a request exceeds available stock, then the service shall offer a waitlisted request that holds no reservation.",
     "scenarios": [
-      "features/guild-member.feature:22"
+      "features/service/requests.feature:16"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-GM-07": {
     "statement": "When a member cancels a request, the service shall release only the outstanding quantity and keep recorded deliveries.",
     "scenarios": [
-      "features/guild-member.feature:25"
+      "features/service/requests.feature:25"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-08": {
     "statement": "While a source's latest observation is older than the review threshold, the service shall block new reservations against it.",
     "scenarios": [
-      "features/guild-member.feature:28"
+      "features/service/requests.feature:33"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-GM-09": {
     "statement": "The service shall apply the same use cases and stock to requests from the website and from Discord.",
     "scenarios": [
-      "features/guild-member.feature:31"
+      "features/service/requests.feature:40"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-01": {
     "statement": "The service shall store a raid profile with timezone, recurrence, managers and item templates.",
     "scenarios": [
-      "features/raid-leader.feature:7"
+      "features/service/raids.feature:8"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-02": {
     "statement": "When a raid occurrence is created, the service shall give it its own allocations and copy none from earlier occurrences.",
     "scenarios": [
-      "features/raid-leader.feature:10"
+      "features/service/raids.feature:13"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-03": {
     "statement": "The service shall count each physical bank once in the holistic view, whatever raid views draw on it.",
     "scenarios": [
-      "features/raid-leader.feature:13"
+      "features/service/inventory.feature:12"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-04": {
     "statement": "If an allocation would commit more than the eligible projected stock, then the service shall reject it.",
     "scenarios": [
-      "features/raid-leader.feature:16"
+      "features/service/raids.feature:20"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "tests/integration/concurrency.test.ts"
+    ],
+    "linked": true
   },
   "TB-RL-05": {
     "statement": "When a request draws on a raid allocation, the service shall reduce raid availability and leave general availability unchanged.",
     "scenarios": [
-      "features/raid-leader.feature:19"
+      "features/service/raids.feature:27"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-06": {
     "statement": "When a raid occurrence expires, the service shall release unused commitments under the configured policy and write an audit event.",
     "scenarios": [
-      "features/raid-leader.feature:22"
+      "features/service/raids.feature:36"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   },
   "TB-RL-07": {
     "statement": "The service shall report shortfall per target as max(0, target - eligibleAvailable), allocating free stock once across competing targets.",
     "scenarios": [
-      "features/raid-leader.feature:25"
+      "features/service/raids.feature:46"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
   },
   "TB-RL-08": {
     "statement": "Where a raid uses a dedicated physical bank, the service shall show it beside virtual allocations in the raid view.",
     "scenarios": [
-      "features/raid-leader.feature:28"
+      "features/service/raids.feature:54"
     ],
     "tests": [],
-    "linked": false
+    "linked": true
   }
 }

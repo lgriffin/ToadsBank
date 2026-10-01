@@ -13,7 +13,7 @@ export function canonicalJson(value: Json): string {
   }
   if (typeof value === 'string') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  const keys = Object.keys(value).sort();
+  const keys = Object.keys(value).sort(compareUtf8);
   const parts: string[] = [];
   for (const key of keys) {
     const item = value[key];
@@ -21,6 +21,14 @@ export function canonicalJson(value: Json): string {
     parts.push(`${JSON.stringify(key)}:${canonicalJson(item)}`);
   }
   return `{${parts.join(',')}}`;
+}
+
+/** Byte order of the UTF-8 encodings, which is code point order: what the contract and the Lua encoder sort by. */
+export function compareUtf8(a: string, b: string): number {
+  const x = [...a].map((c) => c.codePointAt(0) as number);
+  const y = [...b].map((c) => c.codePointAt(0) as number);
+  for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return (x[i] as number) - (y[i] as number);
+  return x.length - y.length;
 }
 
 export function utf8Encode(text: string): Uint8Array {

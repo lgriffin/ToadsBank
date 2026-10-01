@@ -6,6 +6,7 @@ COPY packages/domain/package.json packages/domain/
 COPY packages/application/package.json packages/application/
 COPY packages/adapters/postgres/package.json packages/adapters/postgres/
 COPY packages/adapters/http/package.json packages/adapters/http/
+COPY packages/adapters/hub/package.json packages/adapters/hub/
 COPY apps/api/package.json apps/api/
 COPY apps/worker/package.json apps/worker/
 RUN npm ci --ignore-scripts

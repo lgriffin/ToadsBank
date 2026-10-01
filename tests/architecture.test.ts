@@ -18,6 +18,7 @@ describe('hexagon dependency rules (TB-DM-01)', () => {
         'packages/adapters/http/src/routes.ts -> @toadsbank/adapter-postgres',
         'packages/application/src/useCase.ts -> @toadsbank/adapter-postgres',
         'packages/application/src/useCase.ts -> pg',
+        'packages/application/src/useCase.ts -> pg',
         'packages/domain/src/entity.ts -> ../../application/src/useCase',
         'packages/domain/src/entity.ts -> discord.js',
         'packages/domain/src/entity.ts -> node:fs',
