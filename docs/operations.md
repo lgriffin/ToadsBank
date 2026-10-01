@@ -189,7 +189,12 @@ before the API and worker start again.
 While the two sides differ, the hub's bank routes answer 502 and events fail. The worker retries an event for up to
 24 hours, so none are lost if both sides change within that window.
 
-The database password: change it in Postgres, update `db_password.txt` and `database_url.txt`, restart.
+The database password lives in the `db-data` volume, so changing the secret files alone does not change it:
+
+1. Change it in Postgres first, typing the new password at the prompt so it stays out of shell history:
+   `docker compose -f docker/compose.yaml exec db psql -U toadsbank -d toadsbank -c '\password toadsbank'`.
+2. Write the new password to `db_password.txt` and update it inside `database_url.txt`.
+3. Restart `api` and `worker`.
 
 ## Backups
 
@@ -197,11 +202,21 @@ The database volume (`db-data`) holds every bank, snapshot, request, delivery an
 holds real data:
 
 ```bash
-docker compose -f docker/compose.yaml exec db pg_dump -U toadsbank -d toadsbank -Fc > toadsbank-$(date +%F).dump
+docker compose -f docker/compose.yaml exec -T db pg_dump -U toadsbank -d toadsbank -Fc > toadsbank-$(date +%F).dump
 ```
 
-Run it daily, keep several days and copy the dumps off the host. Restore into an empty database with `pg_restore`,
-then run `migrate` before starting the API. Keep the secret files in your secret store, not next to the dumps.
+Run it daily, keep several days and copy the dumps off the host. Keep the secret files in your secret store, not
+next to the dumps.
+
+To restore, stop `api` and `worker`, then load the dump into the database, replacing what is there, and run the
+migrations before starting them again:
+
+```bash
+docker compose -f docker/compose.yaml stop api worker
+docker compose -f docker/compose.yaml exec -T db pg_restore -U toadsbank -d toadsbank --clean --if-exists --no-owner < toadsbank-2026-10-01.dump
+docker compose -f docker/compose.yaml run --rm migrate
+docker compose -f docker/compose.yaml up -d api worker
+```
 
 ## Troubleshooting
 
