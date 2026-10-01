@@ -1,0 +1,8 @@
+## Interface: 20505
+## Title: ToadsBank Probe
+## Notes: Slice 0 capability probe: records guild bank API, events, tabs and slots. /tbprobe
+## Author: Toads
+## Version: @version@
+## SavedVariables: ToadsBankProbeDB
+
+ToadsBankProbe.lua

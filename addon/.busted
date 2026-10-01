@@ -1,0 +1,10 @@
+-- busted configuration: run from addon/ (`cd addon && busted`). spec/run.lua is the dependency-free stand-in.
+return {
+  default = {
+    ROOT = { "spec" },
+    pattern = "_spec",
+    helper = "spec/helpers/init.lua",
+    lpath = "./?.lua;./?/init.lua",
+    verbose = true,
+  },
+}

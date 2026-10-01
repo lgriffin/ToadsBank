@@ -16,6 +16,8 @@ npm run trace                       # EARS -> scenario -> test traceability (TB-
 TOADSBANK_TEST_DATABASE_URL=postgresql://postgres@localhost:5432/postgres npm run test:integration
 npm run fixtures                    # regenerate contracts/fixtures after a contract change
 docker compose -f docker/compose.test.yaml run --rm addon-test   # luacheck + busted
+(cd addon && lua5.1 spec/run.lua)   # the addon specs without luarocks (busted-compatible runner)
+sh addon/pack.sh                    # addon/dist/ToadsBank-<version>.zip, interfaces from addon/clients.lua
 sh docker/init-secrets.sh && docker compose -f docker/compose.yaml up   # the stack
 ```
 

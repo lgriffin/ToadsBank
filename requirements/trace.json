@@ -4,45 +4,66 @@
     "scenarios": [
       "features/bank-manager.feature:7"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/bootstrap_spec.lua",
+      "addon/spec/guild_bank_adapter_spec.lua",
+      "addon/spec/scan_coordinator_spec.lua"
+    ],
+    "linked": true
   },
   "TB-BM-02": {
     "statement": "If a tab is inaccessible or times out, then the addon shall mark it unknown and shall not export it as empty.",
     "scenarios": [
-      "features/bank-manager.feature:10"
+      "features/bank-manager.feature:16"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/export_snapshot_spec.lua",
+      "addon/spec/guild_bank_adapter_spec.lua",
+      "addon/spec/scan_coordinator_spec.lua",
+      "addon/spec/validator_spec.lua"
+    ],
+    "linked": true
   },
   "TB-BM-03": {
     "statement": "If bank contents change during a scan, then the addon shall retry the affected tab or mark the scan unstable.",
     "scenarios": [
-      "features/bank-manager.feature:13"
+      "features/bank-manager.feature:24"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/scan_coordinator_spec.lua"
+    ],
+    "linked": true
   },
   "TB-BM-04": {
     "statement": "If the bank closes during a scan, then the addon shall abort and keep the previous completed snapshot.",
     "scenarios": [
-      "features/bank-manager.feature:16"
+      "features/bank-manager.feature:32"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/bootstrap_spec.lua",
+      "addon/spec/guild_bank_adapter_spec.lua",
+      "addon/spec/saved_variables_store_spec.lua",
+      "addon/spec/scan_coordinator_spec.lua"
+    ],
+    "linked": true
   },
   "TB-BM-05": {
     "statement": "When an export is requested, the addon shall present the snapshot as selectable parts of at most 1,800 characters each.",
     "scenarios": [
-      "features/bank-manager.feature:19"
+      "features/bank-manager.feature:40"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/bootstrap_spec.lua",
+      "addon/spec/contract_spec.lua",
+      "addon/spec/export_chunker_spec.lua",
+      "addon/spec/export_snapshot_spec.lua"
+    ],
+    "linked": true
   },
   "TB-BM-06": {
     "statement": "When all parts arrive, the service shall reassemble in any order, verify the CRC32, validate the schema and show a preview.",
     "scenarios": [
-      "features/bank-manager.feature:22"
+      "features/bank-manager.feature:48"
     ],
     "tests": [
       "tests/contract/snapshot-contract.test.ts"
@@ -52,7 +73,7 @@
   "TB-BM-07": {
     "statement": "If a snapshot ID is imported again, then the service shall return the earlier receipt for identical content and reject different content.",
     "scenarios": [
-      "features/bank-manager.feature:25"
+      "features/bank-manager.feature:51"
     ],
     "tests": [],
     "linked": false
@@ -60,7 +81,7 @@
   "TB-BM-08": {
     "statement": "If a snapshot is older than a tab's baseline, then the service shall keep it as history and leave the baseline unchanged.",
     "scenarios": [
-      "features/bank-manager.feature:28"
+      "features/bank-manager.feature:54"
     ],
     "tests": [],
     "linked": false
@@ -68,7 +89,7 @@
   "TB-BM-09": {
     "statement": "When a partial snapshot is accepted, the service shall update only observed tabs and retain the others at their previous age.",
     "scenarios": [
-      "features/bank-manager.feature:31"
+      "features/bank-manager.feature:57"
     ],
     "tests": [],
     "linked": false
@@ -76,7 +97,7 @@
   "TB-BM-10": {
     "statement": "The service shall resolve exports of one physical bank by different uploaders to one source.",
     "scenarios": [
-      "features/bank-manager.feature:34"
+      "features/bank-manager.feature:60"
     ],
     "tests": [],
     "linked": false
@@ -84,7 +105,7 @@
   "TB-BM-11": {
     "statement": "When a request is assigned, the service shall notify the manager by DM and list it in the website queue.",
     "scenarios": [
-      "features/bank-manager.feature:37"
+      "features/bank-manager.feature:63"
     ],
     "tests": [],
     "linked": false
@@ -92,7 +113,7 @@
   "TB-BM-12": {
     "statement": "If a manager DM fails, then the service shall keep the assignment, retry within limits and notify the fallback channel.",
     "scenarios": [
-      "features/bank-manager.feature:40"
+      "features/bank-manager.feature:66"
     ],
     "tests": [],
     "linked": false
@@ -100,7 +121,7 @@
   "TB-BM-13": {
     "statement": "When a delivery is recorded, the service shall reduce the reservation and allocation and create the pending outgoing in one transaction.",
     "scenarios": [
-      "features/bank-manager.feature:43"
+      "features/bank-manager.feature:69"
     ],
     "tests": [],
     "linked": false
@@ -108,7 +129,7 @@
   "TB-BM-14": {
     "statement": "While a pending outgoing has no later observation covering it, the service shall keep that quantity unavailable.",
     "scenarios": [
-      "features/bank-manager.feature:46"
+      "features/bank-manager.feature:72"
     ],
     "tests": [],
     "linked": false
@@ -116,7 +137,7 @@
   "TB-BM-15": {
     "statement": "The service shall label a matching quantity change as consistent with reported movement and shall not infer who was fulfilled.",
     "scenarios": [
-      "features/bank-manager.feature:49"
+      "features/bank-manager.feature:75"
     ],
     "tests": [],
     "linked": false
@@ -124,7 +145,7 @@
   "TB-BM-16": {
     "statement": "If a Discord action carries a stale revision, then the service shall reject it and show current state.",
     "scenarios": [
-      "features/bank-manager.feature:52"
+      "features/bank-manager.feature:78"
     ],
     "tests": [],
     "linked": false
@@ -144,31 +165,43 @@
     "scenarios": [
       "features/developer.feature:10"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/base64_spec.lua",
+      "addon/spec/core_purity_spec.lua",
+      "addon/spec/crc32_spec.lua",
+      "addon/spec/json_encoder_spec.lua",
+      "addon/spec/scan_coordinator_spec.lua",
+      "addon/spec/snapshot_spec.lua"
+    ],
+    "linked": true
   },
   "TB-DM-03": {
     "statement": "The Lua and TypeScript codebases shall validate against the same checked-in contract fixtures.",
     "scenarios": [
-      "features/developer.feature:13"
+      "features/developer.feature:17"
     ],
     "tests": [
+      "addon/spec/contract_spec.lua",
+      "addon/spec/validator_spec.lua",
       "tests/contract/snapshot-contract.test.ts"
     ],
-    "linked": false
+    "linked": true
   },
   "TB-DM-04": {
     "statement": "Where the client lacks guild-bank capability, the addon shall report the source as unsupported and shall not scan.",
     "scenarios": [
-      "features/developer.feature:16"
+      "features/developer.feature:24"
     ],
-    "tests": [],
-    "linked": false
+    "tests": [
+      "addon/spec/client_capabilities_spec.lua",
+      "addon/spec/scan_coordinator_spec.lua"
+    ],
+    "linked": true
   },
   "TB-DM-05": {
     "statement": "The stack shall start from a clean clone with one compose command.",
     "scenarios": [
-      "features/developer.feature:19"
+      "features/developer.feature:31"
     ],
     "tests": [],
     "linked": false
@@ -176,7 +209,7 @@
   "TB-DM-06": {
     "statement": "Every mutating use case shall accept an idempotency key and, where an entity exists, its expected revision.",
     "scenarios": [
-      "features/developer.feature:22"
+      "features/developer.feature:34"
     ],
     "tests": [],
     "linked": false
@@ -184,7 +217,7 @@
   "TB-DM-07": {
     "statement": "The service shall reject imports above 1 MiB decoded, 800 parts or a 30-minute session, and bound depth, integers and indices.",
     "scenarios": [
-      "features/developer.feature:25"
+      "features/developer.feature:37"
     ],
     "tests": [
       "tests/contract/snapshot-contract.test.ts"
@@ -194,7 +227,7 @@
   "TB-DM-08": {
     "statement": "The service shall escape imported names and suppress mentions in all bot output.",
     "scenarios": [
-      "features/developer.feature:28"
+      "features/developer.feature:40"
     ],
     "tests": [],
     "linked": false
@@ -202,7 +235,7 @@
   "TB-DM-09": {
     "statement": "When a snapshot is accepted, the service shall publish one outbox event; website and Discord updates shall retry without re-importing.",
     "scenarios": [
-      "features/developer.feature:31"
+      "features/developer.feature:43"
     ],
     "tests": [],
     "linked": false
@@ -210,7 +243,7 @@
   "TB-DM-10": {
     "statement": "If a pull request adds a capability with no EARS statement and linked scenario, then CI shall fail.",
     "scenarios": [
-      "features/developer.feature:34"
+      "features/developer.feature:46"
     ],
     "tests": [],
     "linked": false
@@ -218,7 +251,7 @@
   "TB-DM-11": {
     "statement": "When a release tag is cut, the pipeline shall publish versioned images and the addon archive from that one tag.",
     "scenarios": [
-      "features/developer.feature:37"
+      "features/developer.feature:49"
     ],
     "tests": [],
     "linked": false
