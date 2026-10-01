@@ -53,6 +53,25 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
 
+  mutation:
+    # Stryker over the domain package. The floor starts at the current score and only goes up (spec §9 proposes
+    # 85% domain and 75% application once the suite matures; see the decisions issue).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run mutation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation
+          retention-days: 7
+
   images:
     runs-on: ubuntu-latest
     steps:
@@ -66,6 +85,9 @@ jobs:
           sh docker/init-secrets.sh
           docker compose -f docker/compose.yaml up -d --wait --wait-timeout 120 api worker
           curl -fsS http://localhost:8090/health
+          docker compose -f docker/compose.yaml run --rm migrate seed
+          token="$(cat docker/secrets/service_token.txt)"
+          curl -fsS -H "authorization: Bearer $token" -H "x-toads-member: 1" http://localhost:8090/v1/inventory | grep -q 'Super Mana Potion'
       - name: Compose logs
         if: failure()
         run: docker compose -f docker/compose.yaml logs

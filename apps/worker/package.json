@@ -10,7 +10,10 @@
     "@toadsbank/adapter-postgres": "*",
     "@toadsbank/application": "*",
     "@toadsbank/domain": "*",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "@toadsbank/adapter-hub": "*"
   },
-  "devDependencies": { "esbuild": "^0.24.0" }
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
 }

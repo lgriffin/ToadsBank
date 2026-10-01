@@ -9,11 +9,12 @@
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const root = join(import.meta.dirname, '..');
 const ID = /\bTB-(?:GM|RL|BM|DM)-\d\d\b/g;
+const TAG = /^@TB-(?:GM|RL|BM|DM)-\d\d$/;
 
-interface Entry {
+export interface Entry {
   statement: string;
   scenarios: string[];
   tests: string[];
@@ -21,8 +22,14 @@ interface Entry {
 }
 
 function walk(dir: string, accept: (path: string) => boolean, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (name === 'node_modules' || name.startsWith('.')) continue;
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const name of names) {
+    if (name === 'node_modules' || name === 'fixtures' || name.startsWith('.')) continue;
     const path = join(dir, name);
     if (statSync(path).isDirectory()) walk(path, accept, out);
     else if (accept(path)) out.push(path);
@@ -30,7 +37,7 @@ function walk(dir: string, accept: (path: string) => boolean, out: string[] = []
   return out;
 }
 
-export function buildTrace(): { trace: Record<string, Entry>; errors: string[] } {
+export function buildTrace(root: string): { trace: Record<string, Entry>; errors: string[] } {
   const trace: Record<string, Entry> = {};
   const errors: string[] = [];
   for (const file of walk(join(root, 'requirements'), (p) => p.endsWith('.ears'))) {
@@ -51,8 +58,7 @@ export function buildTrace(): { trace: Record<string, Entry>; errors: string[] }
         const text = line.trim();
         if (text.startsWith('@')) tags.push(...text.split(/\s+/));
         else if (/^Scenario( Outline)?:/.test(text)) {
-          const ids = tags.filter((t) => ID.test(t)).map((t) => t.slice(1));
-          ID.lastIndex = 0;
+          const ids = tags.filter((t) => TAG.test(t)).map((t) => t.slice(1));
           if (ids.length === 0) errors.push(`${relative(root, file)}:${n + 1} has no EARS ID tag`);
           for (const id of ids) {
             const entry = trace[id];
@@ -84,8 +90,8 @@ export function buildTrace(): { trace: Record<string, Entry>; errors: string[] }
   return { trace, errors };
 }
 
-function main(): void {
-  const { trace, errors } = buildTrace();
+function main(root: string): void {
+  const { trace, errors } = buildTrace(root);
   const text = `${JSON.stringify(trace, null, 2)}\n`;
   const tracePath = join(root, 'requirements', 'trace.json');
   const unlinked = Object.entries(trace)
@@ -117,4 +123,4 @@ function main(): void {
   if (errors.length > 0) process.exit(1);
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main(join(import.meta.dirname, '..'));

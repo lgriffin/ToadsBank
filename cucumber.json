@@ -1,0 +1,9 @@
+{
+  "default": {
+    "paths": ["features/**/*.feature"],
+    "import": ["features/support/**/*.ts", "features/steps/**/*.ts"],
+    "tags": "not @pending and not @verified-elsewhere",
+    "strict": true,
+    "format": ["summary", "progress"]
+  }
+}

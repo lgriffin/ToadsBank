@@ -1,0 +1,25 @@
+# Local development on top of compose.yaml: seeded Toads data, debug ports, and a worker that holds events until a hub
+# is running. From the repository root:
+#   sh docker/init-secrets.sh
+#   docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up --build
+# The bank pages and Discord commands live in the Toads hub; run its dev stack with TOADSBANK_URL=http://localhost:8090.
+services:
+  db:
+    ports: ["${TOADSBANK_DB_PORT:-5433}:5432"]
+
+  seed:
+    image: ${TOADSBANK_REGISTRY:-toadsbank}/toadsbank-api:${TOADSBANK_TAG:-dev}
+    command: ["seed"]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      TOADSBANK_SERVICE_TOKEN_FILE: /run/secrets/service_token
+    secrets: [database_url, service_token]
+    read_only: true
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: "no"
+
+  worker:
+    environment:
+      TOADSBANK_EVENTS_URL: ${TOADSBANK_EVENTS_URL:-http://host.docker.internal:8000/api/bank/events}
+    extra_hosts: ["host.docker.internal:host-gateway"]

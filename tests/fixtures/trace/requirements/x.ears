@@ -1,0 +1,4 @@
+TB-GM-01 | ubiquitous | Linked through Cucumber.
+TB-GM-02 | ubiquitous | Still pending.
+TB-DM-01 | ubiquitous | Verified by a named test.
+TB-DM-02 | ubiquitous | Claims a test elsewhere but none names it.
