@@ -1,0 +1,19 @@
+# Bank manager and uploader requirements (EARS). One statement per entry; the ID is permanent.
+# Format: ID | EARS pattern | statement | design v1.0 acceptance scenario (§23), if any
+
+TB-BM-01 | event-driven | When a scan starts with the bank open, the addon shall query each accessible tab in turn and read slots only after that tab's update signal.
+TB-BM-02 | unwanted-behaviour | If a tab is inaccessible or times out, then the addon shall mark it unknown and shall not export it as empty. | 2
+TB-BM-03 | unwanted-behaviour | If bank contents change during a scan, then the addon shall retry the affected tab or mark the scan unstable. | 17
+TB-BM-04 | unwanted-behaviour | If the bank closes during a scan, then the addon shall abort and keep the previous completed snapshot.
+TB-BM-05 | event-driven | When an export is requested, the addon shall present the snapshot as selectable parts of at most 1,800 characters each.
+TB-BM-06 | event-driven | When all parts arrive, the service shall reassemble in any order, verify the CRC32, validate the schema and show a preview. | 4
+TB-BM-07 | unwanted-behaviour | If a snapshot ID is imported again, then the service shall return the earlier receipt for identical content and reject different content. | 3
+TB-BM-08 | unwanted-behaviour | If a snapshot is older than a tab's baseline, then the service shall keep it as history and leave the baseline unchanged.
+TB-BM-09 | event-driven | When a partial snapshot is accepted, the service shall update only observed tabs and retain the others at their previous age. | 2
+TB-BM-10 | ubiquitous | The service shall resolve exports of one physical bank by different uploaders to one source. | 5, 18
+TB-BM-11 | event-driven | When a request is assigned, the service shall notify the manager by DM and list it in the website queue.
+TB-BM-12 | unwanted-behaviour | If a manager DM fails, then the service shall keep the assignment, retry within limits and notify the fallback channel. | 14
+TB-BM-13 | event-driven | When a delivery is recorded, the service shall reduce the reservation and allocation and create the pending outgoing in one transaction. | 10
+TB-BM-14 | state-driven | While a pending outgoing has no later observation covering it, the service shall keep that quantity unavailable. | 11
+TB-BM-15 | ubiquitous | The service shall label a matching quantity change as consistent with reported movement and shall not infer who was fulfilled. | 12
+TB-BM-16 | unwanted-behaviour | If a Discord action carries a stale revision, then the service shall reject it and show current state. | 13

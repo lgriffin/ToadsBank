@@ -1,0 +1,11 @@
+# Raid leader requirements (EARS). One statement per entry; the ID is permanent.
+# Format: ID | EARS pattern | statement | design v1.0 acceptance scenario (§23), if any
+
+TB-RL-01 | ubiquitous | The service shall store a raid profile with timezone, recurrence, managers and item templates.
+TB-RL-02 | event-driven | When a raid occurrence is created, the service shall give it its own allocations and copy none from earlier occurrences.
+TB-RL-03 | ubiquitous | The service shall count each physical bank once in the holistic view, whatever raid views draw on it. | 6
+TB-RL-04 | unwanted-behaviour | If an allocation would commit more than the eligible projected stock, then the service shall reject it. | 7
+TB-RL-05 | event-driven | When a request draws on a raid allocation, the service shall reduce raid availability and leave general availability unchanged. | 8
+TB-RL-06 | event-driven | When a raid occurrence expires, the service shall release unused commitments under the configured policy and write an audit event. | 16
+TB-RL-07 | ubiquitous | The service shall report shortfall per target as max(0, target - eligibleAvailable), allocating free stock once across competing targets.
+TB-RL-08 | optional-feature | Where a raid uses a dedicated physical bank, the service shall show it beside virtual allocations in the raid view.

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lgriffin/ToadsBank/contracts/schema/snapshot.v1.json",
+  "title": "toadsbank.snapshot v1",
+  "description": "One guild bank observation exported by the ToadsBank addon. Occupied slots are the authoritative records; the service derives totals. A snapshot is an interval observation submitted by a user, never proof from WoW. Rules a JSON Schema cannot express (unique tab indices and slot numbers, slot <= capacity, completedAt >= capturedAt, no future timestamps, at most 8 levels of nesting) are enforced by both validators and covered by contracts/fixtures/invalid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schemaVersion",
+    "snapshotId",
+    "addon",
+    "client",
+    "source",
+    "uploader",
+    "capturedAt",
+    "completedAt",
+    "stable",
+    "tabs"
+  ],
+  "properties": {
+    "schema": { "const": "toadsbank.snapshot" },
+    "schemaVersion": { "const": 1 },
+    "snapshotId": { "type": "string", "pattern": "^[A-Za-z0-9-]{8,48}$" },
+    "addon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version"],
+      "properties": { "version": { "type": "string", "minLength": 1, "maxLength": 32 } }
+    },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flavour", "build", "interface"],
+      "properties": {
+        "flavour": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,24}$",
+          "description": "forever, tbc, ... from the addon's client profile"
+        },
+        "build": { "type": "string", "maxLength": 32 },
+        "interface": { "type": "integer", "minimum": 0, "maximum": 9999999 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "guild", "realm", "region"],
+      "properties": {
+        "kind": { "const": "guildBank" },
+        "guild": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "realm": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "region": { "type": "string", "maxLength": 8 },
+        "configuredSourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "A mapping hint only; the service assigns the bank's internal id"
+        }
+      }
+    },
+    "uploader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "realm"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "realm": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "capturedAt": { "$ref": "#/$defs/epochSeconds" },
+    "completedAt": { "$ref": "#/$defs/epochSeconds" },
+    "stable": {
+      "type": "boolean",
+      "description": "false when bank contents changed during the scan and a retry did not settle it"
+    },
+    "money": { "type": "integer", "minimum": 0, "description": "Guild bank money in copper" },
+    "tabs": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/tab" } }
+  },
+  "$defs": {
+    "epochSeconds": { "type": "integer", "minimum": 0, "maximum": 4102444800 },
+    "tab": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "name", "status", "capacity", "observedAt", "slots"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "name": { "type": "string", "maxLength": 64 },
+        "status": {
+          "enum": ["observed", "unknown", "unstable"],
+          "description": "unknown and unstable tabs carry no slots and are never read as empty"
+        },
+        "capacity": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "observedAt": { "$ref": "#/$defs/epochSeconds" },
+        "slots": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/slot" } }
+      }
+    },
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "itemId", "count"],
+      "properties": {
+        "slot": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "itemId": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "count": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "link": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    }
+  }
+}

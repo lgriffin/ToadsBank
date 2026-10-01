@@ -1,0 +1,12 @@
+# Guild member requirements (EARS). One statement per entry; the ID is permanent.
+# Format: ID | EARS pattern | statement | design v1.0 acceptance scenario (§23), if any
+
+TB-GM-01 | ubiquitous | The service shall show each permitted physical bank as its tabs and slots, in captured slot order. | 1
+TB-GM-02 | ubiquitous | The service shall show observed, pending outgoing, raid held, direct reserved and general available quantities for every item.
+TB-GM-03 | ubiquitous | The service shall show the observation age of every source and the capture-time range of every aggregate. | 6
+TB-GM-04 | ubiquitous | The service shall exclude sources a member may not see from every aggregate shown to that member.
+TB-GM-05 | event-driven | When a member submits a request, the service shall reserve the quantity atomically or reject the request. | 9
+TB-GM-06 | unwanted-behaviour | If a request exceeds available stock, then the service shall offer a waitlisted request that holds no reservation.
+TB-GM-07 | event-driven | When a member cancels a request, the service shall release only the outstanding quantity and keep recorded deliveries.
+TB-GM-08 | state-driven | While a source's latest observation is older than the review threshold, the service shall block new reservations against it.
+TB-GM-09 | ubiquitous | The service shall apply the same use cases and stock to requests from the website and from Discord. | 9

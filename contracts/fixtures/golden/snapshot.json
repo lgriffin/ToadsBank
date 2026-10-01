@@ -1,0 +1,312 @@
+{
+  "schema": "toadsbank.snapshot",
+  "schemaVersion": 1,
+  "snapshotId": "spineshatter-bankalt-1790799000-a1b2",
+  "addon": {
+    "version": "0.1.0"
+  },
+  "client": {
+    "flavour": "forever",
+    "build": "0.0.0",
+    "interface": 0
+  },
+  "source": {
+    "kind": "guildBank",
+    "guild": "Toads",
+    "realm": "Spineshatter",
+    "region": "EU"
+  },
+  "uploader": {
+    "name": "Bankalt",
+    "realm": "Spineshatter"
+  },
+  "capturedAt": 1790799000,
+  "completedAt": 1790799012,
+  "stable": true,
+  "money": 123456789,
+  "tabs": [
+    {
+      "index": 1,
+      "name": "Pötions",
+      "status": "observed",
+      "capacity": 98,
+      "observedAt": 1790799004,
+      "slots": [
+        {
+          "slot": 1,
+          "itemId": 22832,
+          "count": 1,
+          "link": "|cffffffff|Hitem:22832::::::::70:::::|h[Super Mana Potion]|h|r"
+        },
+        {
+          "slot": 2,
+          "itemId": 22829,
+          "count": 8,
+          "link": "|cffffffff|Hitem:22829::::::::70:::::|h[Super Healing Potion]|h|r"
+        },
+        {
+          "slot": 3,
+          "itemId": 22854,
+          "count": 15,
+          "link": "|cffffffff|Hitem:22854::::::::70:::::|h[Flask of Relentless Assault]|h|r"
+        },
+        {
+          "slot": 4,
+          "itemId": 22861,
+          "count": 2,
+          "link": "|cffffffff|Hitem:22861::::::::70:::::|h[Flask of Blinding Light]|h|r"
+        },
+        {
+          "slot": 5,
+          "itemId": 22866,
+          "count": 9,
+          "link": "|cffffffff|Hitem:22866::::::::70:::::|h[Flask of Pure Death]|h|r"
+        },
+        {
+          "slot": 6,
+          "itemId": 22838,
+          "count": 16,
+          "link": "|cffffffff|Hitem:22838::::::::70:::::|h[Haste Potion]|h|r"
+        },
+        {
+          "slot": 7,
+          "itemId": 13444,
+          "count": 3,
+          "link": "|cffffffff|Hitem:13444::::::::70:::::|h[Major Mana Potion]|h|r"
+        },
+        {
+          "slot": 8,
+          "itemId": 28102,
+          "count": 10,
+          "link": "|cffffffff|Hitem:28102::::::::70:::::|h[Onslaught Elixir]|h|r"
+        },
+        {
+          "slot": 9,
+          "itemId": 21886,
+          "count": 17,
+          "link": "|cff1eff00|Hitem:21886::::::::70:::::|h[Primal Life]|h|r"
+        },
+        {
+          "slot": 10,
+          "itemId": 22457,
+          "count": 4,
+          "link": "|cff1eff00|Hitem:22457::::::::70:::::|h[Primal Mana]|h|r"
+        },
+        {
+          "slot": 11,
+          "itemId": 22832,
+          "count": 11,
+          "link": "|cffffffff|Hitem:22832::::::::70:::::|h[Super Mana Potion]|h|r"
+        },
+        {
+          "slot": 12,
+          "itemId": 22829,
+          "count": 18,
+          "link": "|cffffffff|Hitem:22829::::::::70:::::|h[Super Healing Potion]|h|r"
+        },
+        {
+          "slot": 13,
+          "itemId": 22854,
+          "count": 5,
+          "link": "|cffffffff|Hitem:22854::::::::70:::::|h[Flask of Relentless Assault]|h|r"
+        },
+        {
+          "slot": 14,
+          "itemId": 22861,
+          "count": 12,
+          "link": "|cffffffff|Hitem:22861::::::::70:::::|h[Flask of Blinding Light]|h|r"
+        },
+        {
+          "slot": 15,
+          "itemId": 22866,
+          "count": 19,
+          "link": "|cffffffff|Hitem:22866::::::::70:::::|h[Flask of Pure Death]|h|r"
+        },
+        {
+          "slot": 16,
+          "itemId": 22838,
+          "count": 6,
+          "link": "|cffffffff|Hitem:22838::::::::70:::::|h[Haste Potion]|h|r"
+        },
+        {
+          "slot": 17,
+          "itemId": 13444,
+          "count": 13,
+          "link": "|cffffffff|Hitem:13444::::::::70:::::|h[Major Mana Potion]|h|r"
+        },
+        {
+          "slot": 18,
+          "itemId": 28102,
+          "count": 20,
+          "link": "|cffffffff|Hitem:28102::::::::70:::::|h[Onslaught Elixir]|h|r"
+        },
+        {
+          "slot": 19,
+          "itemId": 21886,
+          "count": 7,
+          "link": "|cff1eff00|Hitem:21886::::::::70:::::|h[Primal Life]|h|r"
+        },
+        {
+          "slot": 20,
+          "itemId": 22457,
+          "count": 14,
+          "link": "|cff1eff00|Hitem:22457::::::::70:::::|h[Primal Mana]|h|r"
+        },
+        {
+          "slot": 21,
+          "itemId": 22832,
+          "count": 1,
+          "link": "|cffffffff|Hitem:22832::::::::70:::::|h[Super Mana Potion]|h|r"
+        },
+        {
+          "slot": 22,
+          "itemId": 22829,
+          "count": 8,
+          "link": "|cffffffff|Hitem:22829::::::::70:::::|h[Super Healing Potion]|h|r"
+        },
+        {
+          "slot": 23,
+          "itemId": 22854,
+          "count": 15,
+          "link": "|cffffffff|Hitem:22854::::::::70:::::|h[Flask of Relentless Assault]|h|r"
+        },
+        {
+          "slot": 24,
+          "itemId": 22861,
+          "count": 2,
+          "link": "|cffffffff|Hitem:22861::::::::70:::::|h[Flask of Blinding Light]|h|r"
+        },
+        {
+          "slot": 25,
+          "itemId": 22866,
+          "count": 9,
+          "link": "|cffffffff|Hitem:22866::::::::70:::::|h[Flask of Pure Death]|h|r"
+        },
+        {
+          "slot": 26,
+          "itemId": 22838,
+          "count": 16,
+          "link": "|cffffffff|Hitem:22838::::::::70:::::|h[Haste Potion]|h|r"
+        },
+        {
+          "slot": 27,
+          "itemId": 13444,
+          "count": 3,
+          "link": "|cffffffff|Hitem:13444::::::::70:::::|h[Major Mana Potion]|h|r"
+        },
+        {
+          "slot": 28,
+          "itemId": 28102,
+          "count": 10,
+          "link": "|cffffffff|Hitem:28102::::::::70:::::|h[Onslaught Elixir]|h|r"
+        },
+        {
+          "slot": 29,
+          "itemId": 21886,
+          "count": 17,
+          "link": "|cff1eff00|Hitem:21886::::::::70:::::|h[Primal Life]|h|r"
+        },
+        {
+          "slot": 30,
+          "itemId": 22457,
+          "count": 4,
+          "link": "|cff1eff00|Hitem:22457::::::::70:::::|h[Primal Mana]|h|r"
+        },
+        {
+          "slot": 31,
+          "itemId": 22832,
+          "count": 11,
+          "link": "|cffffffff|Hitem:22832::::::::70:::::|h[Super Mana Potion]|h|r"
+        },
+        {
+          "slot": 32,
+          "itemId": 22829,
+          "count": 18,
+          "link": "|cffffffff|Hitem:22829::::::::70:::::|h[Super Healing Potion]|h|r"
+        },
+        {
+          "slot": 33,
+          "itemId": 22854,
+          "count": 5,
+          "link": "|cffffffff|Hitem:22854::::::::70:::::|h[Flask of Relentless Assault]|h|r"
+        },
+        {
+          "slot": 34,
+          "itemId": 22861,
+          "count": 12,
+          "link": "|cffffffff|Hitem:22861::::::::70:::::|h[Flask of Blinding Light]|h|r"
+        },
+        {
+          "slot": 35,
+          "itemId": 22866,
+          "count": 19,
+          "link": "|cffffffff|Hitem:22866::::::::70:::::|h[Flask of Pure Death]|h|r"
+        },
+        {
+          "slot": 36,
+          "itemId": 22838,
+          "count": 6,
+          "link": "|cffffffff|Hitem:22838::::::::70:::::|h[Haste Potion]|h|r"
+        },
+        {
+          "slot": 37,
+          "itemId": 13444,
+          "count": 13,
+          "link": "|cffffffff|Hitem:13444::::::::70:::::|h[Major Mana Potion]|h|r"
+        },
+        {
+          "slot": 38,
+          "itemId": 28102,
+          "count": 20,
+          "link": "|cffffffff|Hitem:28102::::::::70:::::|h[Onslaught Elixir]|h|r"
+        },
+        {
+          "slot": 39,
+          "itemId": 21886,
+          "count": 7,
+          "link": "|cff1eff00|Hitem:21886::::::::70:::::|h[Primal Life]|h|r"
+        },
+        {
+          "slot": 40,
+          "itemId": 22457,
+          "count": 14,
+          "link": "|cff1eff00|Hitem:22457::::::::70:::::|h[Primal Mana]|h|r"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Mats \"raid\"",
+      "status": "observed",
+      "capacity": 98,
+      "observedAt": 1790799008,
+      "slots": [
+        {
+          "slot": 1,
+          "itemId": 21886,
+          "count": 10,
+          "link": "|cff1eff00|Hitem:21886::::::::70:::::|h[Primal Life]|h|r"
+        },
+        {
+          "slot": 5,
+          "itemId": 22457,
+          "count": 7,
+          "link": "|cff1eff00|Hitem:22457::::::::70:::::|h[Primal Mana]|h|r"
+        },
+        {
+          "slot": 98,
+          "itemId": 13444,
+          "count": 3
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Officers",
+      "status": "unknown",
+      "capacity": 98,
+      "observedAt": 1790799012,
+      "slots": []
+    }
+  ]
+}

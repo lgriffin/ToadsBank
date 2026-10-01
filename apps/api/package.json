@@ -1,0 +1,19 @@
+{
+  "name": "@toadsbank/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --external:pg-native --outfile=dist/main.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
+    "dev": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@toadsbank/adapter-http": "*",
+    "@toadsbank/adapter-postgres": "*",
+    "@toadsbank/application": "*",
+    "@toadsbank/domain": "*",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": { "esbuild": "^0.24.0" }
+}

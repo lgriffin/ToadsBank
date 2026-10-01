@@ -1,0 +1,9 @@
+{
+  "name": "@toadsbank/adapter-postgres",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@toadsbank/application": "*", "@toadsbank/domain": "*", "pg": "^8.13.0" },
+  "devDependencies": { "@types/pg": "^8.11.10" }
+}

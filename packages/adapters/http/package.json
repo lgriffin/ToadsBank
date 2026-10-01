@@ -1,0 +1,8 @@
+{
+  "name": "@toadsbank/adapter-http",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@toadsbank/application": "*", "@toadsbank/domain": "*", "hono": "^4.6.0" }
+}
