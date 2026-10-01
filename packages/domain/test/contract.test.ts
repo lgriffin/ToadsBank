@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type Part,
+  assembleParts,
   base64Decode,
   base64Encode,
   canonicalJson,
@@ -141,5 +143,23 @@ describe('validateSnapshot', () => {
 
   it('rejects a non-object', () => {
     expect(validateSnapshot([], now).ok).toBe(false);
+  });
+});
+
+describe('review findings', () => {
+  it('sorts keys by UTF-8 byte order, not UTF-16 units', () => {
+    expect(canonicalJson({ '': 1, '😀': 2 })).toBe('{"":1,"😀":2}');
+  });
+
+  it('refuses a part longer than 1,800 characters', () => {
+    const long = 'A'.repeat(1804);
+    expect(() => parseParts(`TOADSBANK/1 export=abcdefgh part=1/1 crc32=00000000\n${long}`)).toThrow(
+      /longer than 1800/,
+    );
+  });
+
+  it('refuses directly supplied parts outside 1..total', () => {
+    const [part] = encodeParts(utf8Encode('hello'), 'abcdefgh');
+    expect(() => assembleParts([part as Part, { ...(part as Part), index: 2 }])).toThrow(/out of range/);
   });
 });

@@ -96,8 +96,12 @@ export function parseParts(text: string): Part[] {
       if (of > MAX_PARTS) throw new TransportError('too_many_parts', `${of} parts exceeds ${MAX_PARTS}`);
       current = { exportId, index: n, total: of, crc32: crc, payload: '' };
       parts.push(current);
+      if (parts.length > MAX_PARTS * 2) throw new TransportError('too_many_parts', 'too many parts in one paste');
     } else if (current) {
       current.payload += line.replace(/\s+/g, '');
+      if (current.payload.length > MAX_PART_CHARS) {
+        throw new TransportError('too_large', `part ${current.index} is longer than ${MAX_PART_CHARS} characters`);
+      }
     }
   }
   return parts;
@@ -108,7 +112,13 @@ export function assembleParts(parts: readonly Part[]): Uint8Array {
   const first = parts[0];
   if (!first) throw new TransportError('missing_parts', 'no parts');
   const byIndex = new Map<number, Part>();
+  if (first.total < 1 || first.total > MAX_PARTS)
+    throw new TransportError('too_many_parts', `${first.total} parts is out of range`);
   for (const part of parts) {
+    if (!Number.isInteger(part.index) || part.index < 1 || part.index > part.total) {
+      throw new TransportError('bad_part_number', `part ${part.index}/${part.total} is out of range`);
+    }
+    if (part.payload.length > MAX_PART_CHARS) throw new TransportError('too_large', `part ${part.index} is too long`);
     if (part.exportId !== first.exportId || part.total !== first.total || part.crc32 !== first.crc32) {
       throw new TransportError('mixed_exports', 'parts come from different exports');
     }

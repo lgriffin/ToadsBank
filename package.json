@@ -12,7 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run && npm run test:bdd",
     "test:arch": "vitest run tests/architecture.test.ts",
-    "test:contract": "vitest run --project contract",
+    "test:contract": "vitest run tests/contract",
     "trace": "tsx scripts/trace.ts --check",
     "trace:write": "tsx scripts/trace.ts --write",
     "fixtures": "tsx scripts/make-fixtures.ts",
