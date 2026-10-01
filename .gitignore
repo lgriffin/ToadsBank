@@ -7,3 +7,4 @@ reports/
 .env
 secrets/
 addon/dist/
+docker/secrets/
