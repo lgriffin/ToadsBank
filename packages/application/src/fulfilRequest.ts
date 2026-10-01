@@ -1,7 +1,7 @@
 import { type Actor, DomainError, approve, canManage, deliver, reject } from '@toadsbank/domain';
 import { type Context, checkRevision, getRequest, requireInt } from './context';
 import type { Tx } from './ports';
-import { managersOf } from './requestItems';
+import { lockRequestSource, managersOf } from './requestItems';
 import { type RequestView, requestView } from './views';
 
 /** FulfilRequest: approve, reject and record deliveries (TB-BM-11 to 13, TB-BM-16). Managers and admins only. */
@@ -100,8 +100,9 @@ export class FulfilRequest {
   }
 
   private async load(tx: Tx, actor: Actor, id: string, expectedRevision: unknown) {
+    await lockRequestSource(tx, id);
+    // Read the request again under the lock: a cancel or expiry may have committed while this call waited for it.
     const request = await getRequest(tx, id);
-    await tx.lock([`source:${request.sourceId}`]);
     const managers = await managersOf(tx, request);
     if (!canManage({ managers }, actor)) throw new DomainError('forbidden', 'only this bank’s managers can do that');
     // TB-BM-16: a button from an older message carries an older revision and is refused with the current state.

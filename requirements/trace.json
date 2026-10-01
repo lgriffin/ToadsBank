@@ -70,7 +70,9 @@
       "features/service/imports.feature:17"
     ],
     "tests": [
-      "tests/contract/snapshot-contract.test.ts"
+      "packages/application/test/locking.test.ts",
+      "tests/contract/snapshot-contract.test.ts",
+      "tests/integration/concurrency.test.ts"
     ],
     "linked": true
   },
@@ -80,7 +82,10 @@
       "features/service/imports.feature:24",
       "features/service/imports.feature:32"
     ],
-    "tests": [],
+    "tests": [
+      "packages/application/test/locking.test.ts",
+      "tests/integration/concurrency.test.ts"
+    ],
     "linked": true
   },
   "TB-BM-08": {
@@ -110,7 +115,9 @@
       "features/service/imports.feature:63"
     ],
     "tests": [
-      "packages/domain/test/bank.test.ts"
+      "packages/application/test/locking.test.ts",
+      "packages/domain/test/bank.test.ts",
+      "tests/integration/concurrency.test.ts"
     ],
     "linked": true
   },
@@ -144,7 +151,9 @@
     "scenarios": [
       "features/service/fulfilment.feature:21"
     ],
-    "tests": [],
+    "tests": [
+      "packages/application/test/rules.test.ts"
+    ],
     "linked": true
   },
   "TB-BM-15": {
@@ -161,7 +170,10 @@
     "scenarios": [
       "features/service/fulfilment.feature:44"
     ],
-    "tests": [],
+    "tests": [
+      "packages/application/test/locking.test.ts",
+      "tests/integration/concurrency.test.ts"
+    ],
     "linked": true
   },
   "TB-DM-01": {
@@ -314,6 +326,7 @@
       "features/service/inventory.feature:36"
     ],
     "tests": [
+      "packages/application/test/rules.test.ts",
       "packages/domain/test/bank.test.ts"
     ],
     "linked": true
@@ -343,6 +356,7 @@
       "features/service/requests.feature:25"
     ],
     "tests": [
+      "packages/application/test/locking.test.ts",
       "packages/domain/test/bank.test.ts"
     ],
     "linked": true
@@ -404,7 +418,9 @@
     "scenarios": [
       "features/service/raids.feature:27"
     ],
-    "tests": [],
+    "tests": [
+      "packages/application/test/rules.test.ts"
+    ],
     "linked": true
   },
   "TB-RL-06": {
@@ -412,7 +428,10 @@
     "scenarios": [
       "features/service/raids.feature:36"
     ],
-    "tests": [],
+    "tests": [
+      "packages/application/test/locking.test.ts",
+      "tests/integration/concurrency.test.ts"
+    ],
     "linked": true
   },
   "TB-RL-07": {
@@ -421,6 +440,7 @@
       "features/service/raids.feature:46"
     ],
     "tests": [
+      "packages/application/test/rules.test.ts",
       "packages/domain/test/bank.test.ts"
     ],
     "linked": true

@@ -144,13 +144,17 @@ the observation covers is labelled `consistent_with_reported_movement` and close
   `{"name","timezone","recurrence","managers":[ids],"templates":[{"itemId","target"}],"sourceIds":[],"dedicatedSourceIds":[]}`
 - `POST /v1/raid-profiles/{id}/occurrences` `{"name"?,"startsAt","expiresAt"?}` → a raid night with its own, empty
   allocations and the profile's targets (TB-RL-02)
-- `GET /v1/occurrences?profileId=`, `GET /v1/occurrences/{id}` → the raid view:
+- `GET /v1/occurrences?profileId=`, `GET /v1/occurrences/{id}` → the raid view, built only from the banks the caller
+  may see (TB-GM-04); each target takes free stock once, earliest raid first, from the banks its profile may draw on:
   `{"occurrence","profile","allocations":[{...,"raidAvailable"}],"targets":[{"itemId","target","allocated","freeAssigned","eligibleAvailable","shortfall"}],"dedicated":[{"sourceId","name","items"}]}`
 - `POST /v1/occurrences/{id}/allocations` `{"sourceId","itemId","quantity"}` → `409 over_allocated` beyond general
-  availability (TB-RL-04)
+  availability (TB-RL-04). The bank must be one the caller can see (else `404`) and, unless they are an officer, one
+  they manage (else `403`); the raid must still be active (else `409 invalid_transition`)
 - `POST /v1/occurrences/{id}/allocations/{allocationId}/release` `{"quantity"}`
 
 A request with `occurrenceId` draws on that raid's allocation and leaves general availability unchanged (TB-RL-05).
+The raid night must exist (`404`) and be active (`409 invalid_transition`), waitlisted or not. Its raid's managers join
+the request's `managers` only when the bank's audience is `members`.
 When a raid night expires, the worker releases what open raid requests do not hold and writes an audit event
 (TB-RL-06).
 

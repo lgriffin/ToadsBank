@@ -53,30 +53,45 @@ export interface TargetDemand {
   itemId: number;
   target: number;
   allocated: number;
+  /** Banks this target may take free stock from; empty means every bank (the raid profile's sourceIds). */
+  sourceIds: readonly string[];
 }
 
-export interface TargetReport extends TargetDemand {
+export interface TargetReport extends Omit<TargetDemand, 'sourceIds'> {
   freeAssigned: number;
   eligibleAvailable: number;
   shortfall: number;
 }
 
+/** Free stock per bank: sourceId → itemId → quantity no request or allocation holds. */
+export type FreeStock = ReadonlyMap<string, ReadonlyMap<number, number>>;
+
 /**
  * TB-RL-07: shortfall per target is max(0, target - eligibleAvailable). Free stock is handed out once across all
- * competing targets, earliest raid first, so two raids never both count the same free potion.
+ * competing targets, earliest raid first, and each target only takes from the banks its raid may draw on, so two
+ * raids never both count the same free potion and no raid counts a bank it may not use.
  */
-export function shortfalls(demands: readonly TargetDemand[], freeStock: ReadonlyMap<number, number>): TargetReport[] {
-  const remaining = new Map(freeStock);
+export function shortfalls(demands: readonly TargetDemand[], freeStock: FreeStock): TargetReport[] {
+  const remaining = new Map([...freeStock].map(([sourceId, items]) => [sourceId, new Map(items)]));
+  const banks = [...remaining.keys()].sort();
   const ordered = [...demands].sort((a, b) => a.startsAt - b.startsAt || a.occurrenceId.localeCompare(b.occurrenceId));
   const reports = new Map<TargetDemand, TargetReport>();
   for (const demand of ordered) {
-    const need = Math.max(0, demand.target - demand.allocated);
-    const free = remaining.get(demand.itemId) ?? 0;
-    const freeAssigned = Math.min(need, free);
-    remaining.set(demand.itemId, free - freeAssigned);
+    let need = Math.max(0, demand.target - demand.allocated);
+    let freeAssigned = 0;
+    const eligible = demand.sourceIds.length > 0 ? banks.filter((b) => demand.sourceIds.includes(b)) : banks;
+    for (const sourceId of eligible) {
+      const items = remaining.get(sourceId) as Map<number, number>;
+      const taken = Math.min(need, items.get(demand.itemId) ?? 0);
+      if (taken === 0) continue;
+      items.set(demand.itemId, (items.get(demand.itemId) ?? 0) - taken);
+      need -= taken;
+      freeAssigned += taken;
+    }
+    const { sourceIds: _sourceIds, ...rest } = demand;
     const eligibleAvailable = demand.allocated + freeAssigned;
     reports.set(demand, {
-      ...demand,
+      ...rest,
       freeAssigned,
       eligibleAvailable,
       shortfall: Math.max(0, demand.target - eligibleAvailable),

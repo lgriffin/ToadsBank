@@ -135,6 +135,29 @@ describe('HTTP adapter', () => {
     expect((await call('GET', '/v1/requests?scope=everyone')).status).toBe(400);
   });
 
+  it('refuses a body over 6 MiB even when it is chunked, with no Content-Length', async () => {
+    const { app } = setup();
+    const big = JSON.stringify({ text: 'x'.repeat(6 * 1024 * 1024 + 1) });
+    const headers = { authorization: `Bearer ${TOKEN}`, 'x-toads-member': '1', 'content-type': 'application/json' };
+    const chunked = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          const bytes = new TextEncoder().encode(big);
+          for (let at = 0; at < bytes.length; at += 64 * 1024) controller.enqueue(bytes.slice(at, at + 64 * 1024));
+          controller.close();
+        },
+      });
+    const session = (await (await app.request('/v1/imports', { method: 'POST', headers })).json()) as { id: string };
+    const res = await app.request(`/v1/imports/${session.id}/parts`, {
+      method: 'POST',
+      headers,
+      body: chunked(),
+      duplex: 'half',
+    } as RequestInit);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: { code: 'bad_request', message: 'request body is too large' } });
+  });
+
   it('hides a 500 behind a generic message', async () => {
     const bank = createBank({ uow: new MemoryUnitOfWork(), clock: new ManualClock(now), ids: new SequentialIds() });
     bank.inventory.sources = async () => {

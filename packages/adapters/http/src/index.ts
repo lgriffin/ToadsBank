@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Bank, RequestScope } from '@toadsbank/application';
 import { type Actor, DomainError, type DomainErrorCode, type Role } from '@toadsbank/domain';
 import { type Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 export interface HealthProbe {
@@ -77,8 +78,6 @@ function key(c: Context): string {
 }
 
 async function body(c: Context): Promise<Record<string, unknown>> {
-  const length = Number(c.req.header('content-length') ?? 0);
-  if (length > MAX_BODY_BYTES) throw new DomainError('bad_request', 'request body is too large');
   try {
     const parsed = await c.req.json();
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('not an object');
@@ -104,6 +103,17 @@ export function createApp(options: HttpOptions): Hono<Env> {
     c.set('actor', actor);
     await next();
   });
+
+  // The limit counts the bytes actually read, so a chunked body or a false Content-Length cannot get past it.
+  app.use(
+    '/v1/*',
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: () => {
+        throw new DomainError('bad_request', 'request body is too large');
+      },
+    }),
+  );
 
   app.onError((error, c) => {
     if (error instanceof DomainError) {

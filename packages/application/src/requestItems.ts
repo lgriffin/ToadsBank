@@ -2,6 +2,7 @@ import {
   type Actor,
   type BankRequest,
   DomainError,
+  type RequestStatus,
   blocksReservations,
   canManage,
   canSee,
@@ -20,8 +21,8 @@ import {
   requireString,
   stockOf,
 } from './context';
-import type { Tx } from './ports';
-import { raidAvailable, raidManagers } from './raidStock';
+import type { Match, Tx } from './ports';
+import { activeOccurrence, raidAvailable, raidManagers } from './raidStock';
 import { type RequestView, requestView } from './views';
 
 export interface RequestInput {
@@ -51,11 +52,15 @@ export class RequestItems {
         const occurrenceId =
           input.occurrenceId == null ? null : requireString(input.occurrenceId, 'occurrenceId', 1, 64);
         const waitlist = input.waitlist === true;
+        // TB-GM-05: the stock check and the hold happen under the source's lock, so two requests never share stock.
+        // A raid request also takes the raid's lock, before the bank's as every caller does, so it cannot slip in
+        // beside the raid's expiry.
+        await tx.lock(occurrenceId ? [`occurrence:${occurrenceId}`, `source:${sourceId}`] : [`source:${sourceId}`]);
         const source = await getSource(tx, sourceId);
         if (!canSee(source, actor)) throw new DomainError('not_found', `no bank ${sourceId}`);
-        // TB-GM-05: the stock check and the hold happen under the source's lock, so two requests never share stock.
-        await tx.lock([`source:${sourceId}`]);
         const now = this.ctx.now();
+        // Waitlisted or not, a raid request must name a raid night that exists and has not expired.
+        if (occurrenceId) await activeOccurrence(tx, occurrenceId);
         if (!waitlist) {
           if (blocksReservations(source, now, this.ctx.policy.freshness)) {
             throw new DomainError('source_stale', `${source.name} has not been scanned recently enough to hold stock`);
@@ -105,8 +110,9 @@ export class RequestItems {
   cancel(actor: Actor, id: string, expectedRevision: unknown, idempotencyKey: string): Promise<RequestView> {
     return this.ctx.run((tx) =>
       this.ctx.once(tx, actor, idempotencyKey, 'request.cancel', { id, expectedRevision }, async () => {
+        await lockRequestSource(tx, id);
+        // Read the request again under the lock, so the revision check and the write see what is committed now.
         const request = await getRequest(tx, id);
-        await tx.lock([`source:${request.sourceId}`]);
         const managers = await managersOf(tx, request);
         if (request.memberId !== actor.memberId && !canManage({ managers }, actor)) {
           throw new DomainError('forbidden', 'only the requester or a manager can cancel this request');
@@ -124,7 +130,11 @@ export class RequestItems {
 
   list(actor: Actor, scope: RequestScope = 'mine', status?: string): Promise<RequestView[]> {
     return this.ctx.run(async (tx) => {
-      const all = scope === 'mine' ? await tx.requests.find({ memberId: actor.memberId }) : await tx.requests.find();
+      const match: Match<BankRequest> = {
+        ...(scope === 'mine' ? { memberId: actor.memberId } : {}),
+        ...(status ? { status: status as RequestStatus } : {}),
+      };
+      const all = await tx.requests.find(match);
       const views: RequestView[] = [];
       for (const request of all) {
         if (status && request.status !== status) continue;
@@ -139,10 +149,24 @@ export class RequestItems {
   }
 }
 
-/** Who acts on a request: the bank's managers, plus the raid's managers for a raid request. */
+/**
+ * Take the lock of the bank a request draws on. A request never changes bank, so its source id can be read before
+ * the lock; everything else about it must be read again after.
+ */
+export async function lockRequestSource(tx: Tx, requestId: string): Promise<void> {
+  const { sourceId } = await getRequest(tx, requestId);
+  await tx.lock([`source:${sourceId}`]);
+}
+
+/**
+ * Who acts on a request: the bank's managers, plus the raid's managers for a raid request on a bank every member may
+ * see. A bank limited to officers keeps its requests to its own managers: being a raid's manager grants no sight of a
+ * private bank (TB-GM-04).
+ */
 export async function managersOf(tx: Tx, request: Pick<BankRequest, 'sourceId' | 'occurrenceId'>): Promise<string[]> {
   const source = await getSource(tx, request.sourceId);
-  const raid = request.occurrenceId ? await raidManagers(tx, request.occurrenceId) : [];
+  const raid =
+    request.occurrenceId && source.audience === 'members' ? await raidManagers(tx, request.occurrenceId) : [];
   return [...new Set([...source.managers, ...raid])];
 }
 

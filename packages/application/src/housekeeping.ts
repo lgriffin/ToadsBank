@@ -1,7 +1,7 @@
-import { expire, isOpen } from '@toadsbank/domain';
-import type { Context } from './context';
-import type { EventSink, OutboxEvent } from './ports';
-import { managersOf, releaseExpiredRaidHold } from './requestItems';
+import { OPEN, expire, holdsStock, isOpen, outstanding } from '@toadsbank/domain';
+import { type Context, getRequest } from './context';
+import type { EventSink, OutboxEvent, Tx } from './ports';
+import { lockRequestSource, managersOf, releaseExpiredRaidHold } from './requestItems';
 import { requestView } from './views';
 
 const MAX_DELIVERY_SECONDS = 24 * 3600;
@@ -10,55 +10,75 @@ const MAX_DELIVERY_SECONDS = 24 * 3600;
 export class Housekeeping {
   constructor(private readonly ctx: Context) {}
 
-  /** TB-RL-06: an expired raid returns its unused commitments to general stock and leaves an audit event. */
+  /**
+   * TB-RL-06: an expired raid returns its unused commitments to general stock and leaves an audit event. The scan
+   * only finds candidates; each raid expires in its own transaction, read again under the lock that allocations and
+   * raid requests take too, so nothing commits against it in between.
+   */
   async expireRaids(): Promise<string[]> {
-    return this.ctx.run(async (tx) => {
-      const now = this.ctx.now();
-      const due = (await tx.occurrences.find({ status: 'active' })).filter((o) => o.expiresAt <= now);
-      for (const occurrence of due) {
-        const released: Array<{ sourceId: string; itemId: number; quantity: number }> = [];
-        for (const allocation of await tx.allocations.find({ occurrenceId: occurrence.id })) {
-          await tx.lock([`source:${allocation.sourceId}`]);
-          const requests = await tx.requests.find({
-            occurrenceId: occurrence.id,
-            sourceId: allocation.sourceId,
-            itemId: allocation.itemId,
-          });
-          const held = requests
-            .filter((r) => r.status === 'reserved' || r.status === 'approved')
-            .reduce((n, r) => n + r.quantity - r.delivered, 0);
-          const unused = Math.max(0, allocation.quantity - held);
-          if (unused > 0) released.push({ sourceId: allocation.sourceId, itemId: allocation.itemId, quantity: unused });
-          await tx.allocations.put({ ...allocation, quantity: allocation.quantity - unused });
-        }
-        await tx.occurrences.put({ ...occurrence, status: 'expired', revision: occurrence.revision + 1 });
-        await this.ctx.audit(tx, 'system', 'raid.expired', {
-          occurrenceId: occurrence.id,
-          policy: 'release',
-          released,
-        });
-        await this.ctx.emit(tx, 'raid.expired', { occurrenceId: occurrence.id, name: occurrence.name, released });
-      }
-      return due.map((o) => o.id);
-    });
+    const now = this.ctx.now();
+    const candidates = await this.ctx.run(async (tx) =>
+      (await tx.occurrences.find({ status: 'active' })).filter((o) => o.expiresAt <= now).map((o) => o.id),
+    );
+    const expired: string[] = [];
+    for (const id of candidates) if (await this.ctx.run((tx) => this.expireRaid(tx, id, now))) expired.push(id);
+    return expired;
   }
 
+  private async expireRaid(tx: Tx, id: string, now: number): Promise<boolean> {
+    // The raid's lock first, then its banks' in one sorted call: the order allocate and raid requests use.
+    await tx.lock([`occurrence:${id}`]);
+    const occurrence = await tx.occurrences.get(id);
+    if (occurrence?.status !== 'active' || occurrence.expiresAt > now) return false;
+    const allocations = await tx.allocations.find({ occurrenceId: id });
+    await tx.lock(allocations.map((a) => `source:${a.sourceId}`));
+    const released: Array<{ sourceId: string; itemId: number; quantity: number }> = [];
+    for (const allocation of allocations) {
+      const requests = await tx.requests.find({
+        occurrenceId: id,
+        sourceId: allocation.sourceId,
+        itemId: allocation.itemId,
+      });
+      const held = requests.filter(holdsStock).reduce((n, r) => n + outstanding(r), 0);
+      const unused = Math.max(0, allocation.quantity - held);
+      if (unused > 0) released.push({ sourceId: allocation.sourceId, itemId: allocation.itemId, quantity: unused });
+      await tx.allocations.put({ ...allocation, quantity: allocation.quantity - unused });
+    }
+    await tx.occurrences.put({ ...occurrence, status: 'expired', revision: occurrence.revision + 1 });
+    await this.ctx.audit(tx, 'system', 'raid.expired', { occurrenceId: id, policy: 'release', released });
+    await this.ctx.emit(tx, 'raid.expired', { occurrenceId: id, name: occurrence.name, released });
+    return true;
+  }
+
+  /**
+   * Expire open requests past their time. Each open state is queried on its own, so the scan never reads closed
+   * requests. It only names candidates: each one expires in its own transaction, read again under its bank's lock.
+   */
   async expireRequests(): Promise<string[]> {
-    return this.ctx.run(async (tx) => {
-      const now = this.ctx.now();
-      const due = (await tx.requests.find()).filter((r) => isOpen(r) && r.expiresAt <= now);
-      for (const request of due) {
-        await tx.lock([`source:${request.sourceId}`]);
-        await releaseExpiredRaidHold(tx, request);
-        const next = expire(request, now);
-        await tx.requests.put(next);
-        await this.ctx.emit(tx, 'request.updated', {
-          request: requestView(next, await managersOf(tx, next)),
-          change: 'expired',
-        });
-      }
-      return due.map((r) => r.id);
+    const now = this.ctx.now();
+    const candidates = await this.ctx.run(async (tx) => {
+      const ids: string[] = [];
+      for (const status of OPEN)
+        for (const r of await tx.requests.find({ status })) if (r.expiresAt <= now) ids.push(r.id);
+      return ids;
     });
+    const expired: string[] = [];
+    for (const id of candidates) if (await this.ctx.run((tx) => this.expireRequest(tx, id, now))) expired.push(id);
+    return expired;
+  }
+
+  private async expireRequest(tx: Tx, id: string, now: number): Promise<boolean> {
+    await lockRequestSource(tx, id);
+    const request = await getRequest(tx, id);
+    if (!isOpen(request) || request.expiresAt > now) return false;
+    await releaseExpiredRaidHold(tx, request);
+    const next = expire(request, now);
+    await tx.requests.put(next);
+    await this.ctx.emit(tx, 'request.updated', {
+      request: requestView(next, await managersOf(tx, next)),
+      change: 'expired',
+    });
+    return true;
   }
 
   /**

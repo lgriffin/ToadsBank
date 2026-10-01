@@ -4,6 +4,7 @@ import {
   type ItemTarget,
   type TargetDemand,
   type TargetReport,
+  canManage,
   canSee,
   isOfficer,
   shortfalls,
@@ -115,16 +116,20 @@ export class PlanRaid {
   ) {
     return this.ctx.run((tx) =>
       this.ctx.once(tx, actor, idempotencyKey, 'raid.allocate', { occurrenceId, input }, async () => {
+        // The raid's lock, which its expiry also takes, then its state read under it: an expiry cannot commit between
+        // the check that the raid is active and the allocation.
+        await tx.lock([`occurrence:${occurrenceId}`]);
         const { occurrence, profile } = await this.managed(tx, actor, occurrenceId);
-        if (occurrence.status !== 'active') throw new DomainError('invalid_transition', 'this raid has expired');
+        if (occurrence.status !== 'active' || occurrence.expiresAt <= this.ctx.now())
+          throw new DomainError('invalid_transition', 'this raid has expired');
         const sourceId = requireString(input.sourceId, 'sourceId', 1, 64);
         const itemId = requireInt(input.itemId, 'itemId', 1, 2_147_483_647);
         const quantity = requireInt(input.quantity, 'quantity', 1, 100_000);
         if (profile.sourceIds.length > 0 && !profile.sourceIds.includes(sourceId)) {
           throw new DomainError('validation_failed', 'this raid may not draw on that bank');
         }
-        await getSource(tx, sourceId);
         await tx.lock([`source:${sourceId}`]);
+        await this.allocatable(tx, actor, sourceId);
         const available = (await stockOf(tx, sourceId)).get(itemId)?.available ?? 0;
         if (quantity > available) {
           throw new DomainError('over_allocated', `only ${available} can still be committed`, { available });
@@ -143,11 +148,14 @@ export class PlanRaid {
   release(actor: Actor, occurrenceId: string, allocationId: string, quantity: unknown, idempotencyKey: string) {
     return this.ctx.run((tx) =>
       this.ctx.once(tx, actor, idempotencyKey, 'raid.release', { occurrenceId, allocationId, quantity }, async () => {
+        await tx.lock([`occurrence:${occurrenceId}`]);
         await this.managed(tx, actor, occurrenceId);
-        const allocation = await tx.allocations.get(allocationId);
-        if (!allocation || allocation.occurrenceId !== occurrenceId)
+        const found = await tx.allocations.get(allocationId);
+        if (!found || found.occurrenceId !== occurrenceId)
           throw new DomainError('not_found', `no allocation ${allocationId}`);
-        await tx.lock([`source:${allocation.sourceId}`]);
+        await tx.lock([`source:${found.sourceId}`]);
+        await this.allocatable(tx, actor, found.sourceId);
+        const allocation = (await tx.allocations.get(allocationId)) as AllocationDoc;
         const free = await raidAvailable(tx, occurrenceId, allocation.sourceId, allocation.itemId);
         const amount = requireInt(quantity, 'quantity', 1, free === 0 ? 1 : free);
         if (amount > free) throw new DomainError('validation_failed', 'open raid requests hold that stock');
@@ -158,26 +166,31 @@ export class PlanRaid {
     );
   }
 
+  /**
+   * The raid view as one member may see it (TB-GM-04): allocations, targets and stock come only from banks that
+   * member can see, so a private bank's contribution never shows, not even folded into a total.
+   */
   view(actor: Actor, occurrenceId: string): Promise<RaidView> {
     return this.ctx.run(async (tx) => {
       const occurrence = await tx.occurrences.get(occurrenceId);
       if (!occurrence) throw new DomainError('not_found', `no raid ${occurrenceId}`);
       const profile = (await tx.raidProfiles.get(occurrence.profileId)) as ProfileDoc;
-      const allocations = await tx.allocations.find({ occurrenceId });
+      const visible = new Map((await tx.sources.find()).filter((s) => canSee(s, actor)).map((s) => [s.id, s] as const));
+      const allocations = (await tx.allocations.find({ occurrenceId })).filter((a) => visible.has(a.sourceId));
       const allocationViews = await inSequence(allocations, async (a) => ({
         ...a,
         itemName: await itemName(tx, a.itemId),
         raidAvailable: occurrence.status === 'active' ? await raidAvailable(tx, occurrenceId, a.sourceId, a.itemId) : 0,
       }));
-      const reports = await this.targetReports(tx);
+      const reports = await this.targetReports(tx, [...visible.keys()]);
       const targets = await inSequence(
         reports.filter((r) => r.occurrenceId === occurrenceId),
         async (r) => ({ ...r, itemName: await itemName(tx, r.itemId) }),
       );
       const dedicated = [];
       for (const sourceId of profile.dedicatedSourceIds) {
-        const source = await tx.sources.get(sourceId);
-        if (!source || !canSee(source, actor)) continue;
+        const source = visible.get(sourceId);
+        if (!source) continue;
         const items = [];
         for (const [itemId, line] of await stockOf(tx, sourceId)) {
           items.push({
@@ -194,19 +207,27 @@ export class PlanRaid {
   }
 
   /**
-   * TB-RL-07 across every active raid: each target counts its own allocations, then free stock from the banks it may
-   * draw on is handed out once, earliest raid first.
+   * TB-RL-07 across every active raid, over the given banks only: each target counts its own allocations from them,
+   * then each bank's free stock is handed out once, earliest raid first, to the targets whose raid may draw on it.
    */
-  private async targetReports(tx: Tx): Promise<TargetReport[]> {
-    const active = (await tx.occurrences.find({ status: 'active' })) as OccurrenceDoc[];
-    const free = new Map<number, number>();
-    for (const source of await tx.sources.find()) {
-      for (const [itemId, line] of await stockOf(tx, source.id))
-        free.set(itemId, (free.get(itemId) ?? 0) + line.available);
+  private async targetReports(tx: Tx, sourceIds: readonly string[]): Promise<TargetReport[]> {
+    const banks = new Set(sourceIds);
+    const active = await tx.occurrences.find({ status: 'active' });
+    const free = new Map<string, Map<number, number>>();
+    for (const sourceId of banks) {
+      const items = new Map<number, number>();
+      for (const [itemId, line] of await stockOf(tx, sourceId)) items.set(itemId, line.available);
+      free.set(sourceId, items);
     }
+    const profiles = new Map<string, ProfileDoc | undefined>();
     const demands: TargetDemand[] = [];
     for (const occurrence of active) {
-      const allocations = await tx.allocations.find({ occurrenceId: occurrence.id });
+      if (!profiles.has(occurrence.profileId))
+        profiles.set(occurrence.profileId, await tx.raidProfiles.get(occurrence.profileId));
+      const allowed = profiles.get(occurrence.profileId)?.sourceIds ?? [];
+      const allocations = (await tx.allocations.find({ occurrenceId: occurrence.id })).filter((a) =>
+        banks.has(a.sourceId),
+      );
       for (const target of occurrence.targets) {
         const allocated = allocations.filter((a) => a.itemId === target.itemId).reduce((n, a) => n + a.quantity, 0);
         demands.push({
@@ -215,10 +236,19 @@ export class PlanRaid {
           itemId: target.itemId,
           target: target.target,
           allocated,
+          sourceIds: allowed,
         });
       }
     }
     return shortfalls(demands, free);
+  }
+
+  /** A bank a raid draws on must be one the planner can see, and manage unless they are an officer (TB-GM-04). */
+  private async allocatable(tx: Tx, actor: Actor, sourceId: string): Promise<void> {
+    const source = await tx.sources.get(sourceId);
+    if (!source || !canSee(source, actor)) throw new DomainError('not_found', `no bank ${sourceId}`);
+    if (!isOfficer(actor) && !canManage(source, actor))
+      throw new DomainError('forbidden', `only officers and ${source.name}’s managers may commit its stock`);
   }
 
   private async managed(tx: Tx, actor: Actor, occurrenceId: string) {
