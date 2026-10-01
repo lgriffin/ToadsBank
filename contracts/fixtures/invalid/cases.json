@@ -1,0 +1,30 @@
+{
+  "now": 1790800000,
+  "cases": [
+    {
+      "file": "duplicate-slot.txt",
+      "stage": "schema",
+      "code": "duplicate_slot"
+    },
+    {
+      "file": "future-timestamp.txt",
+      "stage": "schema",
+      "code": "future_timestamp"
+    },
+    {
+      "file": "bad-crc.txt",
+      "stage": "transport",
+      "code": "crc_mismatch"
+    },
+    {
+      "file": "conflicting-part.txt",
+      "stage": "transport",
+      "code": "conflicting_part"
+    },
+    {
+      "file": "oversize-part-count.txt",
+      "stage": "transport",
+      "code": "too_many_parts"
+    }
+  ]
+}

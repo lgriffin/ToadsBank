@@ -1,0 +1,14 @@
+# Developer and maintainer requirements (EARS). One statement per entry; the ID is permanent.
+# Format: ID | EARS pattern | statement | design v1.0 acceptance scenario (§23), if any
+
+TB-DM-01 | ubiquitous | The domain and application modules shall import no adapter, framework, SQL client, Discord library or Blizzard global.
+TB-DM-02 | ubiquitous | The addon's domain and serialization modules shall run under standalone Lua with no WoW client.
+TB-DM-03 | ubiquitous | The Lua and TypeScript codebases shall validate against the same checked-in contract fixtures.
+TB-DM-04 | optional-feature | Where the client lacks guild-bank capability, the addon shall report the source as unsupported and shall not scan.
+TB-DM-05 | ubiquitous | The stack shall start from a clean clone with one compose command.
+TB-DM-06 | ubiquitous | Every mutating use case shall accept an idempotency key and, where an entity exists, its expected revision. | 13
+TB-DM-07 | ubiquitous | The service shall reject imports above 1 MiB decoded, 800 parts or a 30-minute session, and bound depth, integers and indices.
+TB-DM-08 | ubiquitous | The service shall escape imported names and suppress mentions in all bot output.
+TB-DM-09 | event-driven | When a snapshot is accepted, the service shall publish one outbox event; website and Discord updates shall retry without re-importing. | 15
+TB-DM-10 | unwanted-behaviour | If a pull request adds a capability with no EARS statement and linked scenario, then CI shall fail.
+TB-DM-11 | event-driven | When a release tag is cut, the pipeline shall publish versioned images and the addon archive from that one tag.

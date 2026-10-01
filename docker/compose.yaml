@@ -1,0 +1,64 @@
+# Production-shaped stack. From the repository root: docker compose -f docker/compose.yaml up
+# Secrets come from files (docker/secrets/*.txt, git-ignored); see docs/operations.md.
+name: toadsbank
+
+x-app-env: &app-env
+  DATABASE_URL_FILE: /run/secrets/database_url
+  TOADSBANK_SERVICE_TOKEN_FILE: /run/secrets/service_token
+
+services:
+  db:
+    image: postgres:16.4-alpine3.20
+    environment:
+      POSTGRES_USER: toadsbank
+      POSTGRES_DB: toadsbank
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toadsbank -d toadsbank"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: ${TOADSBANK_REGISTRY:-toadsbank}/toadsbank-api:${TOADSBANK_TAG:-dev}
+    build: { context: .., dockerfile: docker/Dockerfile, target: api }
+    command: ["migrate"]
+    environment: *app-env
+    secrets: [database_url, service_token]
+    read_only: true
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: ${TOADSBANK_REGISTRY:-toadsbank}/toadsbank-api:${TOADSBANK_TAG:-dev}
+    environment: *app-env
+    secrets: [database_url, service_token]
+    read_only: true
+    ports: ["${TOADSBANK_API_PORT:-8090}:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    image: ${TOADSBANK_REGISTRY:-toadsbank}/toadsbank-worker:${TOADSBANK_TAG:-dev}
+    build: { context: .., dockerfile: docker/Dockerfile, target: worker }
+    environment:
+      <<: *app-env
+      TOADSBANK_EVENTS_URL: ${TOADSBANK_EVENTS_URL:-}
+    secrets: [database_url, service_token]
+    read_only: true
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+secrets:
+  db_password: { file: ./secrets/db_password.txt }
+  database_url: { file: ./secrets/database_url.txt }
+  service_token: { file: ./secrets/service_token.txt }
+
+volumes:
+  db-data:

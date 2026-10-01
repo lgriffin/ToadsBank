@@ -1,0 +1,16 @@
+# CI and local tests: the addon toolchain. Postgres for adapter integration tests comes from compose.yaml's db
+# (CI uses a service container instead). Run: docker compose -f docker/compose.test.yaml run --rm addon-test
+name: toadsbank-test
+
+services:
+  addon-test:
+    build: { context: .., dockerfile: docker/addon-tools.Dockerfile }
+    volumes: [../addon:/work/addon:ro, ../contracts:/work/contracts:ro]
+    working_dir: /work/addon
+    command: ["sh", "-c", "luacheck . && busted"]
+
+  addon-pack:
+    build: { context: .., dockerfile: docker/addon-tools.Dockerfile }
+    volumes: [..:/work]
+    working_dir: /work
+    command: ["sh", "addon/pack.sh"]
