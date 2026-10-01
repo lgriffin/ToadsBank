@@ -5,12 +5,7 @@
   "engines": {
     "node": ">=22"
   },
-  "workspaces": [
-    "packages/domain",
-    "packages/application",
-    "packages/adapters/*",
-    "apps/*"
-  ],
+  "workspaces": ["packages/domain", "packages/application", "packages/adapters/*", "apps/*"],
   "scripts": {
     "lint": "biome check .",
     "fix": "biome check --write .",
