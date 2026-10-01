@@ -34,8 +34,8 @@ local function newFrame(env, kind, name)
   function frame:UnregisterEvent(event)
     self.events[event] = nil
   end
-  function frame:SetScript(name, fn)
-    self.scripts[name] = fn
+  function frame:SetScript(script, fn)
+    self.scripts[script] = fn
   end
   function frame:Show()
     self.shown = true
