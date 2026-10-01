@@ -202,46 +202,74 @@ describe('stock maths (TB-GM-02)', () => {
 });
 
 describe('raid shortfalls (TB-RL-07)', () => {
+  const stock = (entries: Record<string, Record<number, number>>) =>
+    new Map(
+      Object.entries(entries).map(([sourceId, items]) => [
+        sourceId,
+        new Map(Object.entries(items).map(([itemId, n]) => [Number(itemId), n])),
+      ]),
+    );
+
   it('hands free stock to the earliest raid first', () => {
     const reports = shortfalls(
       [
-        { occurrenceId: 'b', startsAt: 20, itemId: 1, target: 50, allocated: 0 },
-        { occurrenceId: 'a', startsAt: 10, itemId: 1, target: 80, allocated: 10 },
+        { occurrenceId: 'b', startsAt: 20, itemId: 1, target: 50, allocated: 0, sourceIds: [] },
+        { occurrenceId: 'a', startsAt: 10, itemId: 1, target: 80, allocated: 10, sourceIds: [] },
       ],
-      new Map([[1, 100]]),
+      stock({ s1: { 1: 60 }, s2: { 1: 40 } }),
     );
     expect(reports.map((r) => [r.occurrenceId, r.freeAssigned, r.shortfall])).toEqual([
       ['b', 30, 20],
       ['a', 70, 0],
     ]);
+    expect(reports[0]).not.toHaveProperty('sourceIds');
   });
 
-  it('never assigns more free stock than exists, and shortfall is max(0, target - eligible)', () => {
+  it('takes free stock only from the banks each raid may draw on, an empty list meaning every bank', () => {
+    const reports = shortfalls(
+      [
+        { occurrenceId: 'a', startsAt: 10, itemId: 1, target: 50, allocated: 0, sourceIds: ['s1'] },
+        { occurrenceId: 'b', startsAt: 20, itemId: 1, target: 50, allocated: 0, sourceIds: ['s2'] },
+        { occurrenceId: 'c', startsAt: 30, itemId: 1, target: 50, allocated: 0, sourceIds: [] },
+        { occurrenceId: 'd', startsAt: 40, itemId: 1, target: 5, allocated: 0, sourceIds: ['s3'] },
+      ],
+      stock({ s1: { 1: 30, 2: 99 }, s2: { 1: 70 } }),
+    );
+    expect(reports.map((r) => [r.occurrenceId, r.freeAssigned, r.shortfall])).toEqual([
+      ['a', 30, 20],
+      ['b', 50, 0],
+      ['c', 20, 30],
+      ['d', 0, 5],
+    ]);
+  });
+
+  it('never assigns more free stock than a bank has, and shortfall is max(0, target - eligible)', () => {
+    const banks = ['s1', 's2', 's3'];
     const demand = fc.record({
       occurrenceId: fc.string(),
       startsAt: fc.nat(100),
       itemId: fc.integer({ min: 1, max: 3 }),
       target: fc.nat(200),
       allocated: fc.nat(200),
+      sourceIds: fc.subarray(banks),
     });
+    const free = fc.tuple(fc.nat(300), fc.nat(300), fc.nat(300));
     fc.assert(
-      fc.property(fc.array(demand, { maxLength: 8 }), fc.nat(300), (demands, free) => {
-        const reports = shortfalls(
-          demands,
-          new Map([
-            [1, free],
-            [2, free],
-            [3, free],
-          ]),
-        );
+      fc.property(fc.array(demand, { maxLength: 8 }), free, (demands, amounts) => {
+        const freeStock = new Map(banks.map((b, i) => [b, new Map([1, 2, 3].map((item) => [item, amounts[i] ?? 0]))]));
+        const reports = shortfalls(demands, freeStock);
         for (const itemId of [1, 2, 3]) {
           const given = reports.filter((r) => r.itemId === itemId).reduce((n, r) => n + r.freeAssigned, 0);
-          expect(given).toBeLessThanOrEqual(free);
+          expect(given).toBeLessThanOrEqual(amounts.reduce((n, a) => n + a, 0));
         }
-        for (const r of reports) {
+        reports.forEach((r, i) => {
+          const allowed = demands[i]?.sourceIds.length ? (demands[i]?.sourceIds ?? []) : banks;
+          const reachable = allowed.reduce((n, b) => n + (amounts[banks.indexOf(b)] ?? 0), 0);
+          expect(r.freeAssigned).toBeLessThanOrEqual(reachable);
+          expect(r.freeAssigned).toBeLessThanOrEqual(Math.max(0, r.target - r.allocated));
           expect(r.eligibleAvailable).toBe(r.allocated + r.freeAssigned);
           expect(r.shortfall).toBe(Math.max(0, r.target - r.eligibleAvailable));
-        }
+        });
       }),
     );
   });

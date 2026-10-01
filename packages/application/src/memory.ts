@@ -45,28 +45,55 @@ class MemoryCollection<T extends { id: string }> implements Collection<T> {
   }
 }
 
-/** One transaction at a time, rolled back by restoring a copy of the state when the work throws. */
+/**
+ * One transaction at a time, rolled back by restoring a copy of the state when the work throws.
+ *
+ * Transactions never overlap here, so `beforeLock` lets a test stage the interleaving a real database allows: another
+ * transaction that committed while this one waited for a lock.
+ */
 export class MemoryUnitOfWork implements UnitOfWork {
   private state: State = Object.fromEntries(COLLECTIONS.map((name) => [name, new Map()])) as State;
   private queue: Promise<unknown> = Promise.resolve();
+  private rollback: State | undefined;
+  private hooks: Array<{ key: string; work: (tx: Tx) => Promise<void> }> = [];
   readonly tx: Tx;
 
   constructor() {
-    const tx: Partial<Tx> = { lock: async () => undefined };
+    const tx: Partial<Tx> = { lock: (keys) => this.lock(keys) };
     for (const name of COLLECTIONS) {
       (tx as Record<string, unknown>)[name] = new MemoryCollection(() => this.state[name]);
     }
     this.tx = tx as Tx;
   }
 
+  /**
+   * Test seam: the next time a transaction locks `key`, `work` runs first and stays committed even if that transaction
+   * rolls back, as if another transaction had committed it while this one waited for the lock.
+   */
+  beforeLock(key: string, work: (tx: Tx) => Promise<void>): void {
+    this.hooks.push({ key, work });
+  }
+
+  private async lock(keys: string[]): Promise<void> {
+    for (const key of [...new Set(keys)].sort()) {
+      const index = this.hooks.findIndex((h) => h.key === key);
+      if (index < 0) continue;
+      const [hook] = this.hooks.splice(index, 1);
+      await hook?.work(this.tx);
+      this.rollback = structuredClone(this.state);
+    }
+  }
+
   run<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
     const result = this.queue.then(async () => {
-      const before = structuredClone(this.state);
+      this.rollback = structuredClone(this.state);
       try {
         return await work(this.tx);
       } catch (error) {
-        this.state = before;
+        this.state = this.rollback as State;
         throw error;
+      } finally {
+        this.rollback = undefined;
       }
     });
     this.queue = result.catch(() => undefined);

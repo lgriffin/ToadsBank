@@ -4,6 +4,7 @@ import {
   DEFAULT_FRESHNESS,
   DomainError,
   type FreshnessPolicy,
+  HOLDING,
   type Source,
   type StockLine,
   holdsStock,
@@ -141,7 +142,9 @@ export async function stockOf(tx: Tx, sourceId: string): Promise<Map<number, Sto
   // One transaction is one connection, so these run one after another.
   const baselines = await tx.baselines.find({ sourceId });
   const deliveries = await tx.deliveries.find({ sourceId, cleared: false });
-  const requests = await tx.requests.find({ sourceId });
+  // Only holding requests reserve stock: ask for each holding state rather than read every request the bank has had.
+  const requests: BankRequest[] = [];
+  for (const status of HOLDING) requests.push(...(await tx.requests.find({ sourceId, status })));
   const allocations = await tx.allocations.find({ sourceId });
   const observed = observedQuantities(baselines);
   const pending = new Map<number, number>();

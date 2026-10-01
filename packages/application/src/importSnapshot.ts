@@ -5,6 +5,7 @@ import {
   type Part,
   type Snapshot,
   type Source,
+  type TabDecision,
   TransportError,
   type ValidationIssue,
   applySnapshot,
@@ -19,7 +20,7 @@ import {
   sourceKey,
   utf8Decode,
 } from '@toadsbank/domain';
-import type { Context } from './context';
+import { type Context, getSource } from './context';
 import type { ImportSession, Receipt, Tx } from './ports';
 import { sourceView } from './views';
 
@@ -84,6 +85,8 @@ export class ImportSnapshot {
       throw new DomainError('bad_request', 'text must be a string of at most 4 MiB');
     }
     return this.ctx.run(async (tx) => {
+      // Two pastes into one import must not both read the old part list and overwrite each other.
+      await tx.lock([`import:${sessionId}`]);
       const session = await this.session(tx, actor, sessionId);
       let parts: Part[] = [];
       try {
@@ -171,8 +174,12 @@ export class ImportSnapshot {
   accept(actor: Actor, sessionId: string, idempotencyKey: string): Promise<Receipt> {
     return this.ctx.run((tx) =>
       this.ctx.once(tx, actor, idempotencyKey, 'import.accept', { sessionId }, async () => {
+        await tx.lock([`import:${sessionId}`]);
         const session = await this.session(tx, actor, sessionId);
         const { snapshot, canonical } = this.decode(session);
+        // The bank's key and the snapshot id are locked before anything is read, so two first imports of one bank
+        // register it once and the same export accepted twice at once is stored once (TB-BM-07, TB-BM-10).
+        await tx.lock([`sourceKey:${sourceKey(snapshot.source)}`, `snapshot:${snapshot.snapshotId}`]);
         const existing = await tx.snapshots.get(snapshot.snapshotId);
         if (existing) {
           // TB-BM-07: the same export again returns the earlier receipt; different content under its id is refused.
@@ -185,10 +192,12 @@ export class ImportSnapshot {
           await tx.importSessions.delete(session.id);
           return { ...existing.receipt, duplicate: true };
         }
-        const source = (await findSource(tx, snapshot)) ?? (await this.register(tx, actor, snapshot));
+        const found = (await findSource(tx, snapshot)) ?? (await this.register(tx, actor, snapshot));
+        await tx.lock([`source:${found.id}`]);
+        // Read the bank again under its lock: a rename or a manager change may have committed since.
+        const source = await getSource(tx, found.id);
         if (!canUpload(source, actor))
           throw new DomainError('forbidden', `you may not upload snapshots of ${source.name}`);
-        await tx.lock([`source:${source.id}`]);
         const receipt = await this.applyToSource(tx, actor, source, snapshot);
         await tx.snapshots.put({
           id: snapshot.snapshotId,
@@ -228,7 +237,8 @@ export class ImportSnapshot {
       lastObservedAt: latest > 0 ? latest : source.lastObservedAt,
     });
     await this.learnNames(tx, snapshot);
-    const covering = decisions.every((d) => d.outcome === 'updated');
+    const counted = [...current.values()].filter((b) => b.observedAt !== null).map((b) => b.index);
+    const covering = coversEveryTab(decisions, counted);
     const after = observedQuantities((await tx.baselines.find({ sourceId: source.id })).values());
     await this.reconcile(tx, source.id, snapshot, covering, before, after);
     await this.ctx.audit(tx, actor.memberId, 'snapshot.accepted', {
@@ -363,6 +373,18 @@ export class ImportSnapshot {
       });
     return { snapshot: result.snapshot, canonical: utf8Decode(bytes) };
   }
+}
+
+/**
+ * TB-BM-14: only an observation that read every tab of the bank, each one newer than what was there, can show that a
+ * pending outgoing has left. `countedTabs` are the tabs whose slots the stock already counts (observed at least once);
+ * a scan with no tabs, or one that skipped or could not read any of them, covers nothing.
+ */
+export function coversEveryTab(decisions: readonly TabDecision[], countedTabs: Iterable<number>): boolean {
+  if (decisions.length === 0 || !decisions.every((d) => d.outcome === 'updated')) return false;
+  const seen = new Set(decisions.map((d) => d.index));
+  for (const index of countedTabs) if (!seen.has(index)) return false;
+  return true;
 }
 
 async function findSource(tx: Tx, snapshot: Snapshot): Promise<Source | undefined> {
