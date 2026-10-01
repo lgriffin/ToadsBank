@@ -12,7 +12,7 @@ function setup() {
   const call = (
     method: string,
     path: string,
-    init: { body?: unknown; member?: string; roles?: string; key?: string; token?: string } = {},
+    init: { body?: unknown; member?: string; roles?: string; banks?: string; key?: string; token?: string } = {},
   ) =>
     app.request(path, {
       method,
@@ -21,6 +21,7 @@ function setup() {
         'x-toads-member': init.member ?? '1',
         'x-toads-name': encodeURIComponent('Lé igh'),
         'x-toads-roles': init.roles ?? 'member,officer,admin',
+        ...(init.banks ? { 'x-toads-banks': init.banks } : {}),
         'content-type': 'application/json',
         ...(init.key ? { 'idempotency-key': init.key } : {}),
       },
@@ -135,16 +136,25 @@ describe('HTTP adapter', () => {
       body: { sourceId: receipt.sourceId, itemId: 22832, quantity: 5, character: 'Frog' },
     });
     const request = (await created.json()) as { id: string; revision: number };
-    const approve = (roles: string, key: string) =>
+    const approve = (roles: string, key: string, banks = receipt.sourceId) =>
       call('POST', `/v1/requests/${request.id}/approve`, {
         member: '3',
         roles,
+        banks,
         key,
         body: { expectedRevision: request.revision },
       });
     expect((await approve('member,root,uploader', 'a1')).status).toBe(403);
+    // A manager the hub vouches for on other banks only, or on none, may not act on this one.
+    expect((await approve('member,manager', 'a3', 'src_other, bad id!')).status).toBe(403);
+    expect((await approve('member,manager', 'a4', '')).status).toBe(403);
     expect((await call('GET', '/v1/requests?scope=all', { member: '3', roles: 'member,uploader' })).status).toBe(403);
-    expect((await call('GET', '/v1/requests?scope=all', { member: '3', roles: 'member,manager' })).status).toBe(200);
+    const listed = await call('GET', '/v1/requests?scope=all', {
+      member: '3',
+      roles: 'member,manager',
+      banks: receipt.sourceId,
+    });
+    expect(((await listed.json()) as unknown[]).length).toBe(1);
     const approved = await approve('member,manager', 'a2');
     expect(approved.status).toBe(200);
     expect(await approved.json()).toMatchObject({ status: 'approved' });

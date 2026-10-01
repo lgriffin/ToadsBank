@@ -39,6 +39,7 @@ const STATUS: Record<DomainErrorCode, ContentfulStatusCode> = {
 
 const ROLES: readonly Role[] = ['member', 'officer', 'admin', 'uploader', 'manager'];
 const MAX_BODY_BYTES = 6 * 1024 * 1024;
+const MAX_VOUCHED_BANKS = 200;
 
 type Env = { Variables: { actor: Actor } };
 
@@ -67,7 +68,13 @@ export function hubIdentity(c: Context, serviceToken: string): Actor | undefined
     .split(',')
     .map((r) => r.trim())
     .filter((r): r is Role => ROLES.includes(r as Role));
-  return { memberId, name, roles: roles.length ? roles : ['member'] };
+  // TB-BM-17: the banks the hub vouches for on this call; the uploader and manager roles act on these alone.
+  const banks = (c.req.header('x-toads-banks') ?? '')
+    .split(',')
+    .map((b) => b.trim())
+    .filter((b) => /^[A-Za-z0-9_-]{1,64}$/.test(b))
+    .slice(0, MAX_VOUCHED_BANKS);
+  return { memberId, name, roles: roles.length ? roles : ['member'], banks };
 }
 
 function key(c: Context): string {

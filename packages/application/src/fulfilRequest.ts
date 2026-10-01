@@ -1,5 +1,5 @@
 import { type Actor, DomainError, approve, canManage, deliver, reject } from '@toadsbank/domain';
-import { type Context, checkRevision, getRequest, requireInt } from './context';
+import { type Context, checkRevision, getRequest, getSource, requireInt } from './context';
 import type { Tx } from './ports';
 import { lockRequestSource, managersOf } from './requestItems';
 import { type RequestView, requestView } from './views';
@@ -104,7 +104,9 @@ export class FulfilRequest {
     // Read the request again under the lock: a cancel or expiry may have committed while this call waited for it.
     const request = await getRequest(tx, id);
     const managers = await managersOf(tx, request);
-    if (!canManage({ managers }, actor)) throw new DomainError('forbidden', 'only this bank’s managers can do that');
+    const { audience } = await getSource(tx, request.sourceId);
+    if (!canManage({ id: request.sourceId, managers, audience }, actor))
+      throw new DomainError('forbidden', 'only this bank’s managers can do that');
     // TB-BM-16: a button from an older message carries an older revision and is refused with the current state.
     checkRevision('the request', request, expectedRevision);
     return { request, managers };

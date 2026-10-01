@@ -115,7 +115,8 @@ export class RequestItems {
         // Read the request again under the lock, so the revision check and the write see what is committed now.
         const request = await getRequest(tx, id);
         const managers = await managersOf(tx, request);
-        if (request.memberId !== actor.memberId && !canManage({ managers }, actor)) {
+        const { audience } = await getSource(tx, request.sourceId);
+        if (request.memberId !== actor.memberId && !canManage({ id: request.sourceId, managers, audience }, actor)) {
           throw new DomainError('forbidden', 'only the requester or a manager can cancel this request');
         }
         checkRevision('the request', request, expectedRevision);
@@ -140,10 +141,14 @@ export class RequestItems {
       for (const request of all) {
         if (status && request.status !== status) continue;
         const managers = await managersOf(tx, request);
-        if (scope === 'queue' && !canManage({ managers }, actor)) continue;
-        // A hub-vouched manager (TB-BM-17) may list them too: the hub narrows the list to the banks it lets them work.
-        if (scope === 'all' && !isOfficer(actor) && !isDelegatedManager(actor))
-          throw new DomainError('forbidden', 'only officers can list every request');
+        const { audience } = await getSource(tx, request.sourceId);
+        const managed = canManage({ id: request.sourceId, managers, audience }, actor);
+        if (scope === 'queue' && !managed) continue;
+        // A hub-vouched manager (TB-BM-17) lists every request only on the banks the hub named on this call.
+        if (scope === 'all' && !isOfficer(actor)) {
+          if (!isDelegatedManager(actor)) throw new DomainError('forbidden', 'only officers can list every request');
+          if (!managed) continue;
+        }
         views.push(requestView(request, managers));
       }
       return views.sort((a, b) => a.createdAt - b.createdAt);

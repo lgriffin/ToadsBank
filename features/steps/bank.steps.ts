@@ -505,3 +505,8 @@ When('{word} registers the bank {string}', async function (this: BankWorld, name
     ),
   );
 });
+
+Given('the hub vouches for {word} on {string}', function (this: BankWorld, name: string, bank: string) {
+  const actor = this.actor(name);
+  this.actors.set(name, { ...actor, banks: [...(actor.banks ?? []), this.bankRef(bank).id] });
+});

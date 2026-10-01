@@ -13,17 +13,20 @@ Every `/v1` call carries:
 | `X-Toads-Member` | The member's Discord id (decimal string). Required. |
 | `X-Toads-Name` | Display name, percent-encoded UTF-8. Optional. |
 | `X-Toads-Roles` | Comma list from `member`, `officer`, `admin`, `uploader`, `manager`. `admin` is a hub global officer; `uploader` and `manager` are per-call delegations (below). Unknown roles are ignored. |
+| `X-Toads-Banks` | Comma list of source ids the hub vouches for on this call; `uploader` and `manager` act on these alone. Optional. |
 
 The hub decides who reaches a route (its RBAC); ToadsBank still applies its own rules to the identity: a source's
 `audience` (`members` or `officers`) limits who sees it (TB-GM-04), and manager actions need the member to be in the
 source's `managers` or an `admin`.
 
 `uploader` and `manager` let the hub delegate the bank's upkeep to chosen members without making them officers
-(TB-BM-17). The hub sends them only on a call it has checked itself, for the bank that call touches (its own grants
-and raid-day binding): `uploader` lets the member accept a snapshot of a registered bank as an officer could, and
-`manager` lets them list every request (`scope=all`) and approve, reject, record deliveries on and cancel requests as
-one of the source's managers could. Neither sees officers-only banks, registers or edits sources, or plans raids, and
-neither adds the member to a source's `managers`, so `request.assigned` DMs still go to the listed managers only.
+(TB-BM-17). The hub sends them only on a call it has checked itself (its own grants and raid-day binding), together
+with `X-Toads-Banks`, the banks that call may touch. On those banks alone, and only on ones the member may see,
+`uploader` lets the member accept a snapshot as an officer could, and `manager` lets them list requests (`scope=queue`
+or `scope=all`, narrowed to those banks) and approve, reject, record deliveries on and cancel requests as one of the
+source's managers could. Neither reaches an officers-only bank (TB-GM-04), registers or edits sources, plans raids or
+commits raid stock, and neither adds the member to a source's `managers`, so `request.assigned` DMs still go to the
+listed managers only.
 
 Every mutating `POST` needs an `Idempotency-Key` header (1 to 128 characters). A repeat with the same key and body
 returns the first response; the same key with a different body is `409 idempotency_conflict` (TB-DM-06). Actions on

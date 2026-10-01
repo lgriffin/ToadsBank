@@ -1,4 +1,4 @@
-import { type Actor, isAdmin, isDelegatedManager, isDelegatedUploader, isOfficer } from './actor';
+import { type Actor, isAdmin, isDelegatedManager, isDelegatedUploader, isOfficer, vouchedFor } from './actor';
 
 export type Audience = 'members' | 'officers';
 export type Freshness = 'fresh' | 'warn' | 'stale' | 'never';
@@ -52,12 +52,26 @@ export function canSee(source: Pick<Source, 'audience' | 'managers'>, actor: Act
   return source.audience === 'members' || isOfficer(actor) || source.managers.includes(actor.memberId);
 }
 
-/** TB-BM-17: a hub-vouched `manager` manages the bank its call touches, like one of the source's managers. */
-export function canManage(source: Pick<Source, 'managers'>, actor: Actor): boolean {
-  return isAdmin(actor) || isDelegatedManager(actor) || source.managers.includes(actor.memberId);
+/** Who may manage a bank: its listed managers, admins, and a delegated manager (TB-BM-17). */
+export type ManagedBank = Pick<Source, 'id' | 'managers' | 'audience'>;
+
+/**
+ * TB-BM-17: a hub-vouched `manager` manages a bank like one of its listed managers, but only a bank the hub named on
+ * this call (X-Toads-Banks) and one they may see: the delegation never lifts an officers-only audience (TB-GM-04).
+ */
+export function canManage(source: ManagedBank, actor: Actor): boolean {
+  return (
+    isAdmin(actor) || source.managers.includes(actor.memberId) || delegated(isDelegatedManager(actor), source, actor)
+  );
 }
 
-/** TB-BM-17: a hub-vouched `uploader` uploads the bank its call touches, like an officer. */
-export function canUpload(source: Pick<Source, 'managers'>, actor: Actor): boolean {
-  return isOfficer(actor) || isDelegatedUploader(actor) || source.managers.includes(actor.memberId);
+function delegated(role: boolean, source: ManagedBank, actor: Actor): boolean {
+  return role && vouchedFor(actor, source.id) && canSee(source, actor);
+}
+
+/** TB-BM-17: a hub-vouched `uploader` uploads a bank the hub named on this call, like an officer, if they may see it. */
+export function canUpload(source: ManagedBank, actor: Actor): boolean {
+  return (
+    isOfficer(actor) || source.managers.includes(actor.memberId) || delegated(isDelegatedUploader(actor), source, actor)
+  );
 }
