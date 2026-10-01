@@ -30,6 +30,33 @@ jobs:
       - run: npm run trace
       - run: npm audit --audit-level=high --omit=dev
 
+  addon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+      - uses: leafo/gh-actions-luarocks@v4
+      - run: luarocks install busted
+      - run: luarocks install luacheck
+      - name: luacheck (no WoW global in the core, TB-DM-02)
+        working-directory: addon
+        run: luacheck .
+      - name: busted (core, adapters on a fake client, contract fixtures TB-DM-03)
+        working-directory: addon
+        run: busted
+      - name: The dependency-free runner agrees (spec/run.lua)
+        working-directory: addon
+        run: lua spec/run.lua
+      - name: Pack
+        run: sh addon/pack.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toadsbank-addon
+          path: addon/dist/*.zip
+          if-no-files-found: error
+
   integration:
     runs-on: ubuntu-latest
     services:

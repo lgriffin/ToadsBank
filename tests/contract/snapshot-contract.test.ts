@@ -28,6 +28,7 @@ const cases = JSON.parse(read('invalid/cases.json')) as {
 const SCHEMA_MESSAGES: Record<string, RegExp> = {
   duplicate_slot: /duplicates slot/,
   future_timestamp: /in the future/,
+  string_length: /must be a string of 1 to 24 characters/,
 };
 
 describe('golden fixture', () => {

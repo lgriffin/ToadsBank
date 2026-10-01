@@ -1,0 +1,30 @@
+## Interface: 20505
+## Title: ToadsBank
+## Notes: Scans the guild bank and exports a TOADSBANK/1 snapshot to paste into the Toads Discord.
+## Author: Toads
+## Version: @version@
+## SavedVariables: ToadsBankDB
+## X-Client: TBC Anniversary 2.5.5
+
+# Interface is stamped from ../clients.lua by ../pack.sh; spec/toc_spec.lua checks the two agree.
+# The core (core/) touches no WoW global; only adapters/ and Bootstrap.lua do.
+core/ports.lua
+core/domain/Utf8.lua
+core/domain/Slot.lua
+core/domain/Tab.lua
+core/domain/Snapshot.lua
+core/domain/Validator.lua
+core/serialization/JsonEncoder.lua
+core/serialization/Base64.lua
+core/serialization/Crc32.lua
+core/serialization/ExportChunker.lua
+core/application/ScanCoordinator.lua
+core/application/ExportSnapshot.lua
+adapters/wow/ClientCapabilities.lua
+adapters/wow/GuildBankAdapter.lua
+adapters/wow/SavedVariablesStore.lua
+adapters/wow/Timer.lua
+adapters/ui/ScanPanel.lua
+adapters/ui/ExportPanel.lua
+adapters/ui/SlashCommands.lua
+Bootstrap.lua
