@@ -1,4 +1,4 @@
-import { type Actor, isAdmin, isOfficer } from './actor';
+import { type Actor, isAdmin, isDelegatedManager, isDelegatedUploader, isOfficer } from './actor';
 
 export type Audience = 'members' | 'officers';
 export type Freshness = 'fresh' | 'warn' | 'stale' | 'never';
@@ -52,10 +52,12 @@ export function canSee(source: Pick<Source, 'audience' | 'managers'>, actor: Act
   return source.audience === 'members' || isOfficer(actor) || source.managers.includes(actor.memberId);
 }
 
+/** TB-BM-17: a hub-vouched `manager` manages the bank its call touches, like one of the source's managers. */
 export function canManage(source: Pick<Source, 'managers'>, actor: Actor): boolean {
-  return isAdmin(actor) || source.managers.includes(actor.memberId);
+  return isAdmin(actor) || isDelegatedManager(actor) || source.managers.includes(actor.memberId);
 }
 
+/** TB-BM-17: a hub-vouched `uploader` uploads the bank its call touches, like an officer. */
 export function canUpload(source: Pick<Source, 'managers'>, actor: Actor): boolean {
-  return isOfficer(actor) || source.managers.includes(actor.memberId);
+  return isOfficer(actor) || isDelegatedUploader(actor) || source.managers.includes(actor.memberId);
 }

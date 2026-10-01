@@ -176,6 +176,21 @@
     ],
     "linked": true
   },
+  "TB-BM-17": {
+    "statement": "Where the hub vouches on a call that the member uploads or manages the bank it touches, the service shall let that member upload or manage that bank without officer or admin powers.",
+    "scenarios": [
+      "features/service/delegation.feature:14",
+      "features/service/delegation.feature:20",
+      "features/service/delegation.feature:27",
+      "features/service/delegation.feature:33",
+      "features/service/delegation.feature:38"
+    ],
+    "tests": [
+      "packages/adapters/http/test/http.test.ts",
+      "packages/domain/test/bank.test.ts"
+    ],
+    "linked": true
+  },
   "TB-DM-01": {
     "statement": "The domain and application modules shall import no adapter, framework, SQL client, Discord library or Blizzard global.",
     "scenarios": [

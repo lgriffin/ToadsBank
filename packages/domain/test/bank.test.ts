@@ -15,6 +15,8 @@ import {
   deliver,
   expire,
   freshness,
+  isAdmin,
+  isOfficer,
   nameFromLink,
   observedQuantities,
   reject,
@@ -102,6 +104,21 @@ describe('sources', () => {
     expect(canManage({ managers: [] }, admin)).toBe(true);
     expect(canUpload({ managers: [] }, officer)).toBe(true);
     expect(canUpload({ managers: [] }, member)).toBe(false);
+  });
+
+  it('lets a hub-vouched uploader upload and a hub-vouched manager manage, and nothing more (TB-BM-17)', () => {
+    const uploader = { memberId: '4', name: 'u', roles: ['member', 'uploader'] as const };
+    const manager = { memberId: '5', name: 'm', roles: ['member', 'manager'] as const };
+    const hidden = { audience: 'officers' as const, managers: [] };
+    expect(canUpload({ managers: [] }, uploader)).toBe(true);
+    expect(canManage({ managers: [] }, uploader)).toBe(false);
+    expect(canManage({ managers: [] }, manager)).toBe(true);
+    expect(canUpload({ managers: [] }, manager)).toBe(false);
+    for (const actor of [uploader, manager]) {
+      expect(isOfficer(actor)).toBe(false);
+      expect(isAdmin(actor)).toBe(false);
+      expect(canSee(hidden, actor)).toBe(false);
+    }
   });
 });
 

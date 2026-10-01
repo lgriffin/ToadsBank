@@ -17,3 +17,4 @@ TB-BM-13 | event-driven | When a delivery is recorded, the service shall reduce 
 TB-BM-14 | state-driven | While a pending outgoing has no later observation covering it, the service shall keep that quantity unavailable. | 11
 TB-BM-15 | ubiquitous | The service shall label a matching quantity change as consistent with reported movement and shall not infer who was fulfilled. | 12
 TB-BM-16 | unwanted-behaviour | If a Discord action carries a stale revision, then the service shall reject it and show current state. | 13
+TB-BM-17 | optional-feature | Where the hub vouches on a call that the member uploads or manages the bank it touches, the service shall let that member upload or manage that bank without officer or admin powers.

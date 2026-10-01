@@ -37,7 +37,7 @@ const STATUS: Record<DomainErrorCode, ContentfulStatusCode> = {
   source_stale: 423,
 };
 
-const ROLES: readonly Role[] = ['member', 'officer', 'admin'];
+const ROLES: readonly Role[] = ['member', 'officer', 'admin', 'uploader', 'manager'];
 const MAX_BODY_BYTES = 6 * 1024 * 1024;
 
 type Env = { Variables: { actor: Actor } };

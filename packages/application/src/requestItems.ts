@@ -8,6 +8,7 @@ import {
   canSee,
   cancel,
   holdsStock,
+  isDelegatedManager,
   isOfficer,
   outstanding,
 } from '@toadsbank/domain';
@@ -140,7 +141,8 @@ export class RequestItems {
         if (status && request.status !== status) continue;
         const managers = await managersOf(tx, request);
         if (scope === 'queue' && !canManage({ managers }, actor)) continue;
-        if (scope === 'all' && !isOfficer(actor))
+        // A hub-vouched manager (TB-BM-17) may list them too: the hub narrows the list to the banks it lets them work.
+        if (scope === 'all' && !isOfficer(actor) && !isDelegatedManager(actor))
           throw new DomainError('forbidden', 'only officers can list every request');
         views.push(requestView(request, managers));
       }
